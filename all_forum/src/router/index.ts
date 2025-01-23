@@ -6,16 +6,13 @@ import ForumPage from '@/views/ForumPage.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/auth', component: AuthLayout, children: [
+  routes: [ 
+    { path: '/auth', component: AuthLayout, children: [
         {path: 'register', name: 'register', component: Register},
         {path: 'login', name: 'login', component: Login},
       ]
     },
-    {
-      path: '/', name: 'ForumPage', component: ForumPage,
-    },
+    { path: '/', name: 'ForumPage', component: ForumPage, },
   ],
 })
 
