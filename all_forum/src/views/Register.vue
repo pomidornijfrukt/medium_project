@@ -1,40 +1,37 @@
 <template>
   <div class="auth-page">
     <h1>Register</h1>
-    <form @submit.prevent="handleSubmit">
-      <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" id="email" v-model="email" placeholder="Enter your email" />
-      </div>
-      <div class="form-group">
-        <label for="password">Password:</label>
-        <input type="password" id="password" v-model="password" placeholder="Enter your password" />
-      </div>
-      <button type="submit">Submit</button>
+    <form @submit.prevent="handleRegister">
+      <FormInput 
+        label="Email:"
+        id="register-email"
+        v-model="email"
+        :inputAttrs="{ type: 'email', placeholder: 'Ur email'}"
+      />
+      <FormInput
+        label="Password:"
+        id="register-password"
+        v-model="password"
+        :inputAttrs="{ type: 'passwrd', placeholder: 'Ur pass bro'}"
+      />
+      <AuthButton type="submit">Register</AuthButton>
     </form>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import FormInput from '@/components/FormInput.vue';
+import AuthButton from '@/components/AuthButton.vue';
 
 export default defineComponent({
-  name: 'AuthPage',
-  props: {
-    title: {
-      type: String,
-      required: true,
-    },
-    buttonText: {
-      type: String,
-      required: true,
-    },
-  },
+  name: 'Register',
+  components: { FormInput, AuthButton },
   setup() {
     const email = ref<string>('');
     const password = ref<string>('');
 
-    const handleSubmit = () => {
+    const handleRegister = () => {
       console.log({ email: email.value, password: password.value });
       // Add form logic here
     };
@@ -42,7 +39,7 @@ export default defineComponent({
     return {
       email,
       password,
-      handleSubmit,
+      handleRegister,
     };
   },
 });
