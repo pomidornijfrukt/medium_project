@@ -28,8 +28,8 @@ export default defineComponent({
   name: 'Login',
   components: { FormInput, AuthButton },
   setup() {
-    const email = ref('');
-    const password = ref('');
+    const email = ref<string>('');
+    const password = ref<string>('');
 
     const handleLogin = () => {
       console.log('Logging in with:', { email: email.value, password: password.value });
