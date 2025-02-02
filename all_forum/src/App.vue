@@ -6,7 +6,7 @@ import { RouterLink, RouterView } from 'vue-router'
   <div id="app">
     <nav>
       <router-link to="/auth/register">Register/Login</router-link>
-      <router-link to="/ForumPage">Forum</router-link>
+      <router-link to="/forum">Forum</router-link>
     </nav>
     <router-view />
   </div>

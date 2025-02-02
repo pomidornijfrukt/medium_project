@@ -1,6 +1,6 @@
 <template>
   <div class="auth-page">
-    <h1>{{ title }}</h1>
+    <h1>Register</h1>
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
         <label for="email">Email:</label>
@@ -10,7 +10,7 @@
         <label for="password">Password:</label>
         <input type="password" id="password" v-model="password" placeholder="Enter your password" />
       </div>
-      <button type="submit">{{ buttonText }}</button>
+      <button type="submit">Submit</button>
     </form>
   </div>
 </template>

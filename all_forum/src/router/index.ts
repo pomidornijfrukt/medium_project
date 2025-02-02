@@ -3,6 +3,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import Register from '@/views/Register.vue';
 import Login from '@/views/Login.vue';
 import ForumPage from '@/views/ForumPage.vue';
+import ForumLayout from '@/layouts/ForumLayout.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,7 +13,9 @@ const router = createRouter({
         {path: 'login', name: 'login', component: Login},
       ]
     },
-    { path: '/', name: 'ForumPage', component: ForumPage, },
+    { path: '/', component: ForumLayout, children: [
+      {path: 'forum', name: 'ForumPage', component: ForumPage}
+    ]},
   ],
 })
 
