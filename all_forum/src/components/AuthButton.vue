@@ -1,6 +1,6 @@
 <template>
   <button :type="type" class="auth-button" @click="onClick">
-    <slot />
+    <slot></slot>
   </button>
 </template>
 
@@ -11,9 +11,9 @@ export default defineComponent({
   name: 'AuthButton',
   props: {
     type: {
-      type: String,
-      default: 'button',
-    },
+        type: String as () => 'button' | 'submit' | 'reset',
+        default: 'button',
+      },
   },
   emits: ['click'],
   methods: {
