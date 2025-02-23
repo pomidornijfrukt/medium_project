@@ -48,7 +48,7 @@ nav a:first-of-type {
   border: 0;
 }
 
-@media (max-width: 3441px) {
+@media (max-width: none) {
   header {
     display: flex;
     place-items: center;
