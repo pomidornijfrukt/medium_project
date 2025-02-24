@@ -4,17 +4,8 @@
     <ThemeButton />
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
+<script setup>
 import ThemeButton from '@/components/ThemeButton.vue';
-
-export default defineComponent({
-  name: 'ForumLayout',
-  components: {
-    ThemeButton,
-  },
-});
-
 </script>
 
 <style scoped>

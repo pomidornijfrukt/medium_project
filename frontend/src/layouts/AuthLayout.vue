@@ -10,7 +10,7 @@
       <router-link to="/auth/register" @click="closeMenu">Register</router-link>
       <router-link to="/forum" @click="closeMenu">Forum</router-link>
     </div>
-    
+
     <ThemeButton />
 
     <main>
@@ -19,31 +19,23 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
-import ThemeButton from '@/components/ThemeButton.vue';
+<script setup>
+import { ref } from 'vue'
+import ThemeButton from '@/components/ThemeButton.vue'
 
-export default defineComponent({
-  name: 'AuthLayout',
-  components: {
-     ThemeButton,
-  },
-  setup() {
-    const menuOpen = ref(false);
+const menuOpen = ref(false)
 
-    const toggleMenu = () => {
-      menuOpen.value = !menuOpen.value;
-    };
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value
+}
 
-    const closeMenu = () => {
-      menuOpen.value = false;
-    };
-    
-    const theme = ref(localStorage.getItem('dark-theme') || 'white-theme');
+const closeMenu = () => {
+  menuOpen.value = false
+}
 
-    return { menuOpen, toggleMenu, closeMenu };
-  },
-});
+const theme = ref(localStorage.getItem('dark-theme') || 'white-theme')
+
+return { menuOpen, toggleMenu, closeMenu }
 </script>
 
 <style scoped>
@@ -53,7 +45,7 @@ export default defineComponent({
   height: 100vh;
   position: absolute;
   width: 100%;
-  left:0;
+  left: 0;
   top: 0;
   background: linear-gradient(135deg, #6a11cb, #2575fc);
 }

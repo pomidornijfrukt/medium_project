@@ -19,7 +19,7 @@
   </div>
 </template>
 
-<script lang="ts">
+<script>
 import { defineComponent, ref } from 'vue';
 import FormInput from '@/components/FormInput.vue';
 import AuthButton from '@/components/AuthButton.vue';
