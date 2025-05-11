@@ -1,15 +1,23 @@
-<script setup lang="ts">
+<script setup>
 import { RouterLink, RouterView } from 'vue-router'
+import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
-  <div id="app">
-    <nav>
-      <router-link to="/auth/register">Register/Login</router-link>
-      <router-link to="/forum">Forum</router-link>
-    </nav>
-    <router-view />
-  </div>
+  <header>
+    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+
+    <div class="wrapper">
+      <HelloWorld msg="You did it!" />
+
+      <nav>
+        <RouterLink to="/">Home</RouterLink>
+        <RouterLink to="/about">About</RouterLink>
+      </nav>
+    </div>
+  </header>
+
+  <RouterView />
 </template>
 
 <style scoped>
@@ -48,11 +56,11 @@ nav a:first-of-type {
   border: 0;
 }
 
-@media (max-width: none) {
+@media (min-width: 1024px) {
   header {
     display: flex;
     place-items: center;
-    padding-right: 50rem;
+    padding-right: calc(var(--section-gap) / 2);
   }
 
   .logo {
@@ -67,7 +75,7 @@ nav a:first-of-type {
 
   nav {
     text-align: left;
-    margin-left: 1rem;
+    margin-left: -1rem;
     font-size: 1rem;
 
     padding: 1rem 0;
