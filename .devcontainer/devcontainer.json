@@ -1,0 +1,17 @@
+{
+  "name": "Laravel Project",
+  "image": "mcr.microsoft.com/devcontainers/php:8.0.30",
+  "postCreateCommand": "apt-get update && apt-get install -y php-pgsql",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "one-dark.pro",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}
