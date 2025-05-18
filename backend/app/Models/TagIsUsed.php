@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class TagIsUsed extends Model
+class TagIsUsed extends Pivot
 {
-    protected $table = 'TagIsUsed';
+    protected $table = 'Tag is Used';
     protected $primaryKey = 'UniqueID';
-    public $timestamps = false;
-
-    protected $fillable = ['TagName', 'Post_ID'];
+    
+    protected $fillable = [
+        'TagName',
+        'PostID'
+    ];
 }

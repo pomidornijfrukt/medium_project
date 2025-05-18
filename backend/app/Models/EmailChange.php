@@ -2,12 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class EmailChange extends Model
 {
-    protected $primaryKey = 'EmailChangeID';
-    public $timestamps = false;
+    use HasFactory;
 
-    protected $fillable = ['Old_e_mail', 'New_e_mail'];
+    protected $primaryKey = 'EmailChangeID';
+    protected $fillable = [
+        'Old Email',
+        'New Email'
+    ];
+
+    public function action()
+    {
+        return $this->hasOne(Action::class, 'EmailChangeID');
+    }
 }

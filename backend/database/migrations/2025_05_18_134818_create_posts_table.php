@@ -4,32 +4,32 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
-     *
-     * @return void
      */
     public function up()
     {
         Schema::create('posts', function (Blueprint $table) {
             $table->id('PostID');
-            $table->unsignedBigInteger('Author'); // FK to users
+            $table->string('Author', 36);
             $table->string('Topic');
             $table->text('Content');
-            $table->timestamp('Creation_date');
+            $table->enum('Status', ['draft', 'published', 'deleted'])->default('draft');
+            $table->timestamp('LastEditedAt')->nullable();
+            $table->timestamps();
 
-            $table->foreign('Author')->references('UID')->on('users');
+            $table->foreign('Author')
+                ->references('UID')
+                ->on('users')
+                ->onDelete('cascade');
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('posts');
     }

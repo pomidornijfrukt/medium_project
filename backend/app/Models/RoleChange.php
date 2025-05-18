@@ -2,12 +2,31 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RoleChange extends Model
 {
-    protected $primaryKey = 'RoleChangeID';
-    public $timestamps = false;
+    use HasFactory;
 
-    protected $fillable = ['Old_Role_ID', 'New_Role_ID'];
+    protected $primaryKey = 'RoleChangeID';
+    protected $fillable = [
+        'Old Role ID',
+        'New Role ID'
+    ];
+
+    public function action()
+    {
+        return $this->hasOne(Action::class, 'RoleChangeID');
+    }
+
+    public function oldRole()
+    {
+        return $this->belongsTo(Role::class, 'Old Role ID', 'Role Name');
+    }
+
+    public function newRole()
+    {
+        return $this->belongsTo(Role::class, 'New Role ID', 'Role Name');
+    }
 }

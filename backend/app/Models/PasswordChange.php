@@ -5,18 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class UserNameChange extends Model
+class PasswordChange extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'UserNameChangeID';
+    protected $primaryKey = 'PassChangeID';
     protected $fillable = [
-        'Old UserName',
-        'New UserName'
+        'Old Password Hash',
+        'New Password Hash'
     ];
 
     public function action()
     {
-        return $this->hasOne(Action::class, 'UserNameChangeID');
+        return $this->hasOne(Action::class, 'PassChangeID');
     }
 }
