@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref(null)
 
   const isLoggedIn = computed(() => !!token.value)
+  const isAdmin = computed(() => user.value?.Role === 'admin')
 
   // Initialize user data if token exists
   const initializeAuth = async () => {
@@ -139,6 +140,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     isLoggedIn,
+    isAdmin,
     login,
     register,
     logout,

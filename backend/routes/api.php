@@ -6,6 +6,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\PostController;
 use App\Http\Controllers\API\TagController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\HealthController;
 use App\Http\Controllers\API\CorsTestController;
 
@@ -63,11 +64,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/tags/{tag}', [TagController::class, 'update']);
     Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
     
-    // Admin routes
-    Route::middleware(['role:admin'])->group(function () {
-        Route::get('/users', [UserController::class, 'index']);
-        Route::get('/users/{user}', [UserController::class, 'show']);
-        Route::put('/users/{user}/role', [UserController::class, 'updateRole']);
-        Route::put('/users/{user}/status', [UserController::class, 'updateStatus']);
+    // Admin routes - organized under /api/admin/ prefix
+    Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
+        // User management
+        Route::get('/users', [AdminController::class, 'getUsers']);
+        Route::get('/users/{userId}', [AdminController::class, 'getUserDetails']);
+        Route::put('/users/{userId}/role', [AdminController::class, 'updateUserRole']);
+        Route::put('/users/{userId}/status', [AdminController::class, 'updateUserStatus']);
+        
+        // Post management
+        Route::get('/posts', [AdminController::class, 'getPosts']);
+        Route::delete('/posts/{postId}', [AdminController::class, 'deletePost']);
+        
+        // Dashboard & utilities
+        Route::get('/stats', [AdminController::class, 'getDashboardStats']);
+        Route::get('/roles', [AdminController::class, 'getRoles']);
     });
 });

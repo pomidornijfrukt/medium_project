@@ -48,6 +48,13 @@ const handleLogout = async () => {
             >
               Profile
             </RouterLink>
+            <RouterLink 
+              v-if="authStore.isAdmin"
+              to="/admin" 
+              class="text-purple-700 hover:text-purple-900 px-3 py-2 rounded-md text-sm font-semibold transition-colors duration-200"
+            >
+              Admin Panel
+            </RouterLink>
             <button 
               @click="handleLogout" 
               class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"

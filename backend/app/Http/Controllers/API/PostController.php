@@ -626,4 +626,42 @@ class PostController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Get(
+     *     path="/api/admin/posts",
+     *     summary="Get all posts for admin (including drafts and deleted)",
+     *     tags={"Admin"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Posts retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Post"))
+     *         )
+     *     )
+     * )
+     */
+    public function getAllForAdmin()
+    {
+        try {
+            $posts = Post::with(['author', 'tags'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Posts retrieved successfully',
+                'data' => $posts
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve posts',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
