@@ -177,8 +177,13 @@
                         {{ post.Status }}
                       </span>
                     </div>
-                  </div>
-                  <div class="flex space-x-2">
+                  </div>                  <div class="flex space-x-2">
+                    <router-link 
+                      :to="`/posts/${post.PostID}/edit`"
+                      class="text-indigo-600 hover:text-indigo-900 text-sm"
+                    >
+                      Edit
+                    </router-link>
                     <button 
                       @click="deletePost(post)"
                       class="text-red-600 hover:text-red-900 text-sm"

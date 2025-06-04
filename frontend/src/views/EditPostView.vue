@@ -163,7 +163,7 @@ const canEditPost = computed(() => {
   return authStore.isLoggedIn && 
          authStore.user && 
          post.value && 
-         (authStore.user.UID === post.value.UID || authStore.user.Role === 'admin')
+         (authStore.user.UID === post.value.Author || authStore.isAdmin)
 })
 
 const addTag = () => {
@@ -195,11 +195,10 @@ const handleSubmit = async () => {
     content: form.value.content.trim(),
     tags: form.value.tags
   }
-
-  const result = await postStore.updatePost(post.value.PID, postData)
+  const result = await postStore.updatePost(post.value.PostID, postData)
   
   if (result.success) {
-    router.push(`/posts/${post.value.PID}`)
+    router.push(`/posts/${post.value.PostID}`)
   }
 }
 

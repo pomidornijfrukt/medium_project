@@ -294,8 +294,11 @@ class PostController extends Controller
                 ], 404);
             }
 
-            // Check if user owns the post
-            if ($post->Author !== Auth::id()) {
+            // Check if user owns the post or is admin
+            $user = Auth::user()->load('role');
+            $isAdmin = $user->role && $user->role->RoleName === 'admin';
+            
+            if ($post->Author !== Auth::id() && !$isAdmin) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to update this post'
