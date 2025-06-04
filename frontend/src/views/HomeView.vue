@@ -12,19 +12,43 @@ const tagStore = useTagStore()
 // Local state
 const searchQuery = ref('')
 const isLoading = ref(true)
+const showUpdateNotification = ref(false)
+const showTagUpdateNotification = ref(false)
 
 // Methods
-const fetchPosts = async (page = 1) => {
+const fetchPosts = async (page = 1, useCache = true) => {
   try {
-    await postStore.fetchPosts(page, searchQuery.value)
+    const result = await postStore.fetchPosts(page, searchQuery.value, useCache)
+    
+    // Show notification if we had cached data and found updates
+    if (result.success && postStore.hasNewPosts.value) {
+      showUpdateNotification.value = true
+      // Auto-hide notification after 8 seconds
+      setTimeout(() => {
+        showUpdateNotification.value = false
+      }, 8000)
+    }
+    
+    return result
   } catch (error) {
     console.error('Error fetching posts:', error)
   }
 }
 
-const fetchTags = async () => {
+const fetchTags = async (useCache = true) => {
   try {
-    await tagStore.fetchTags()
+    const result = await tagStore.fetchTags(useCache)
+    
+    // Show notification if we had cached data and found updates
+    if (result.success && tagStore.hasNewTags.value) {
+      showTagUpdateNotification.value = true
+      // Auto-hide notification after 8 seconds
+      setTimeout(() => {
+        showTagUpdateNotification.value = false
+      }, 8000)
+    }
+    
+    return result
   } catch (error) {
     console.error('Error fetching tags:', error)
   }
@@ -32,7 +56,7 @@ const fetchTags = async () => {
 
 const changePage = async (page) => {
   if (page >= 1 && page <= postStore.pagination.lastPage) {
-    await fetchPosts(page)
+    await fetchPosts(page, searchQuery.value, false) // Don't use cache for pagination
   }
 }
 
@@ -51,16 +75,37 @@ const formatDate = (dateString) => {
 }
 
 const searchPosts = async () => {
-  await fetchPosts(1)
+  await fetchPosts(1, false) // Don't use cache for search
+}
+
+const refreshPosts = async () => {
+  showUpdateNotification.value = false
+  await postStore.refreshWithFreshPosts(1, searchQuery.value)
+}
+
+const dismissUpdateNotification = () => {
+  showUpdateNotification.value = false
+}
+
+const refreshTags = async () => {
+  showTagUpdateNotification.value = false
+  await tagStore.refreshWithFreshTags()
+}
+
+const dismissTagUpdateNotification = () => {
+  showTagUpdateNotification.value = false
 }
 
 // Load data on component mount
 onMounted(async () => {
   isLoading.value = true
+  
+  // Load posts (will use cache if available)
   await Promise.all([
-    fetchPosts(),
+    fetchPosts(), // This will show cached posts immediately if available
     fetchTags()
   ])
+  
   isLoading.value = false
 })
 </script>
@@ -145,6 +190,66 @@ onMounted(async () => {
                 Search
               </button>
             </div>
+          </div>
+
+          <!-- Update Notification -->
+          <div 
+            v-if="showUpdateNotification" 
+            class="bg-blue-50 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between"
+          >
+            <div class="flex items-center">
+              <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="font-medium">New posts are available!</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button 
+                @click="refreshPosts"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors duration-200"
+              >
+                Refresh
+              </button>
+              <button 
+                @click="dismissUpdateNotification"
+                class="text-blue-700 hover:text-blue-900 px-2 py-1 text-sm transition-colors duration-200"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+
+          <!-- Tag Update Notification -->
+          <div 
+            v-if="showTagUpdateNotification" 
+            class="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between"
+          >
+            <div class="flex items-center">
+              <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              <span class="font-medium">New tags are available!</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button 
+                @click="refreshTags"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors duration-200"
+              >
+                Refresh
+              </button>
+              <button 
+                @click="dismissTagUpdateNotification"
+                class="text-green-700 hover:text-green-900 px-2 py-1 text-sm transition-colors duration-200"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+
+          <!-- Cache Loading Indicator -->
+          <div v-if="postStore.cacheLoading" class="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center">
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+            <span class="text-sm">Loading cached posts...</span>
           </div>
 
           <!-- Loading State -->
