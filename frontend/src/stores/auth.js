@@ -2,42 +2,76 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 // API base URL configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6969/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(localStorage.getItem('auth_token'))
   const loading = ref(false)
   const error = ref(null)
+  const initialized = ref(false)
 
-  const isLoggedIn = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.Role === 'admin')
+  // Only consider user logged in if we have both token AND user data AND initialization is complete
+  const isLoggedIn = computed(() => {
+    return initialized.value && !!token.value && !!user.value
+  })
+  
+  const isAdmin = computed(() => {
+    return isLoggedIn.value && user.value?.Role === 'admin'
+  })
 
   // Initialize user data if token exists
   const initializeAuth = async () => {
-    if (token.value && !user.value) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/user`, {
-          headers: {
-            'Authorization': `Bearer ${token.value}`,
-            'Accept': 'application/json'
-          }
-        })
+    console.log('🔐 Initializing auth state...')
+    
+    // If no token, mark as initialized and return
+    if (!token.value) {
+      console.log('🔐 No token found, setting initialized to true')
+      initialized.value = true
+      return
+    }
 
-        if (response.ok) {
-          const data = await response.json()
-          user.value = data.user || data.data
-        } else {
-          // Token is invalid, clear it
-          logout()
+    // If we already have user data, mark as initialized
+    if (user.value) {
+      console.log('🔐 User data already exists, setting initialized to true')
+      initialized.value = true
+      return
+    }
+
+    // Try to fetch user data with the token
+    try {
+      console.log('🔐 Fetching user data with token...')
+      const response = await fetch(`${API_BASE_URL}/user`, {
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Accept': 'application/json'
         }
-      } catch (err) {
-        console.error('Failed to initialize auth:', err)
-        logout()
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('🔐 User data fetched successfully:', data)
+        user.value = data.user || data.data
+        initialized.value = true
+      } else {
+        console.log('🔐 Token validation failed, clearing auth data')
+        // Token is invalid, clear everything
+        clearAuthData()
       }
+    } catch (err) {
+      console.error('🔐 Failed to initialize auth:', err)
+      // Network error or other issue, clear auth data
+      clearAuthData()
     }
   }
 
+  // Helper function to clear all auth data
+  const clearAuthData = () => {
+    token.value = null
+    user.value = null
+    initialized.value = true
+    localStorage.removeItem('auth_token')
+  }
   const register = async (userData) => {
     loading.value = true
     error.value = null
@@ -47,7 +81,8 @@ export const useAuthStore = defineStore('auth', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'        },
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           username: userData.username,
           email: userData.email,
@@ -61,6 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (response.ok && data.success) {
         token.value = data.data.access_token
         user.value = data.data.user
+        initialized.value = true
         localStorage.setItem('auth_token', data.data.access_token)
         return { success: true }
       } else {
@@ -86,13 +122,15 @@ export const useAuthStore = defineStore('auth', () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(credentials)      })
+        body: JSON.stringify(credentials)
+      })
 
       const data = await response.json()
 
       if (response.ok && data.success) {
         token.value = data.data.access_token
         user.value = data.data.user
+        initialized.value = true
         localStorage.setItem('auth_token', data.data.access_token)
         return { success: true }
       } else {
@@ -122,9 +160,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
     
-    token.value = null
-    user.value = null
-    localStorage.removeItem('auth_token')
+    clearAuthData()
   }
 
   const clearError = () => {
@@ -139,6 +175,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     loading,
     error,
+    initialized,
     isLoggedIn,
     isAdmin,
     login,

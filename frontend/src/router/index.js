@@ -79,26 +79,30 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  
-  // Wait for auth initialization if needed
-  if (authStore.token && !authStore.user) {
+
+  // Wait for auth initialization to complete
+  if (!authStore.initialized) {
+    console.log('⏳ Waiting for auth initialization...')
     await authStore.initializeAuth()
   }
-  
+
   // Check if route requires authentication
   if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    console.log('🚫 User not logged in, redirecting to login...')
     next('/login')
     return
   }
   
   // Check if route requires guest (not logged in)
   if (to.meta.requiresGuest && authStore.isLoggedIn) {
+    console.log('🚫 User already logged in, redirecting to home...')
     next('/')
     return
   }
   
   // Check if route requires admin
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    console.log('🚫 User is not an admin, redirecting to home...')
     next('/')
     return
   }
