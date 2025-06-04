@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('tags', function (Blueprint $table) {
             $table->string('TagName', 50)->primary();
-            $table->text('Description');
+            $table->text('Description')->nullable();
             $table->timestamps();
         });
     }

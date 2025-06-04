@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posts API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { background: #f0f8ff; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #007acc; }
+        .error { background: #ffe4e1; border-left-color: #ff4444; }
+        .success { background: #f0fff0; border-left-color: #00cc44; }
+        .post { background: #fff8dc; border-left-color: #ffa500; margin: 5px 0; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Posts API Test</h1>
+    <button onclick="testAPI()">Test API</button>
+    <button onclick="clearResults()">Clear Results</button>
+    <div id="results"></div>
+    
+    <script>
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Starting API tests...</p>';
+            
+            try {
+                // Test health endpoint
+                resultsDiv.innerHTML += '<h3>🔍 Testing Health Endpoint</h3>';
+                const healthResponse = await fetch('http://localhost:6969/api/health');
+                const healthData = await healthResponse.json();
+                
+                resultsDiv.innerHTML += `<div class="result success">
+                    <strong>Health Status:</strong> ${healthResponse.status} ${healthResponse.ok ? '✅' : '❌'}<br>
+                    <strong>Response:</strong><br>
+                    <pre>${JSON.stringify(healthData, null, 2)}</pre>
+                </div>`;
+                
+                // Test posts endpoint
+                resultsDiv.innerHTML += '<h3>📝 Testing Posts Endpoint</h3>';
+                const postsResponse = await fetch('http://localhost:6969/api/posts');
+                const postsData = await postsResponse.json();
+                
+                const isSuccess = postsResponse.ok && postsData.success;
+                resultsDiv.innerHTML += `<div class="result ${isSuccess ? 'success' : 'error'}">
+                    <strong>Posts Status:</strong> ${postsResponse.status} ${postsResponse.ok ? '✅' : '❌'}<br>
+                    <strong>Success:</strong> ${postsData.success}<br>
+                    <strong>Message:</strong> ${postsData.message}<br>
+                    <strong>Total Posts:</strong> ${postsData.data?.total || 0}<br>
+                    <strong>Current Page:</strong> ${postsData.data?.current_page || 'N/A'}<br>
+                    <strong>Per Page:</strong> ${postsData.data?.per_page || 'N/A'}<br>
+                </div>`;
+                
+                if (postsData.data && postsData.data.data && postsData.data.data.length > 0) {
+                    resultsDiv.innerHTML += '<h4>📋 Posts List:</h4>';
+                    postsData.data.data.forEach((post, index) => {
+                        resultsDiv.innerHTML += `<div class="result post">
+                            <strong>Post ${index + 1}:</strong> ${post.Topic}<br>
+                            <strong>ID:</strong> ${post.PostID}<br>
+                            <strong>Author:</strong> ${post.author?.Username || 'Unknown'} (${post.Author})<br>
+                            <strong>Status:</strong> ${post.Status}<br>
+                            <strong>Type:</strong> ${post.PostType || 'N/A'}<br>
+                            <strong>Created:</strong> ${post.created_at || 'N/A'}<br>
+                            <strong>Content:</strong> ${post.Content?.substring(0, 150)}${post.Content?.length > 150 ? '...' : ''}
+                        </div>`;
+                    });
+                } else {
+                    resultsDiv.innerHTML += '<div class="result error">⚠️ No posts found in response</div>';
+                }
+                
+                // Show raw response for debugging
+                resultsDiv.innerHTML += '<h4>🔍 Raw Response:</h4>';
+                resultsDiv.innerHTML += `<div class="result">
+                    <pre>${JSON.stringify(postsData, null, 2)}</pre>
+                </div>`;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="result error">
+                    <strong>❌ Network Error:</strong> ${error.message}<br>
+                    <small>Make sure the backend server is running on port 6969</small>
+                </div>`;
+                console.error('API Test Error:', error);
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', testAPI);
+    </script>
+</body>
+</html>

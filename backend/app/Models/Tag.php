@@ -18,9 +18,30 @@ class Tag extends Model
         'Description'
     ];
 
+    /**
+     * Boot the model and set up event listeners.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-fill description with TagName if not provided
+        static::creating(function ($tag) {
+            if (empty($tag->Description)) {
+                $tag->Description = $tag->TagName;
+            }
+        });
+
+        static::updating(function ($tag) {
+            if (empty($tag->Description)) {
+                $tag->Description = $tag->TagName;
+            }
+        });
+    }
+
     public function posts()
     {
-        return $this->belongsToMany(Post::class, 'Tag is Used', 'TagName', 'PostID')
+        return $this->belongsToMany(Post::class, 'tag_is_used', 'TagName', 'PostID')
             ->withTimestamps()
             ->using(TagIsUsed::class);
     }

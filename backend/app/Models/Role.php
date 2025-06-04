@@ -9,22 +9,22 @@ class Role extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'Role Name';
+    protected $primaryKey = 'RoleName';
     public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [
-        'Role Name',
-        'Role Description'
+        'RoleName',
+        'RoleDescription'
     ];
 
     public function users()
     {
-        return $this->hasMany(User::class, 'Role', 'Role Name');
+        return $this->hasMany(User::class, 'Role', 'RoleName');
     }
 
     public function roleChanges()
     {
-        return $this->hasMany(RoleChange::class, 'Old Role ID', 'Role Name');
+        return $this->hasMany(RoleChange::class, 'OldRoleID', 'RoleName');
     }
 }

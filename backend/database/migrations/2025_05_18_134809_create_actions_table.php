@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id('ActionID');
             $table->string('Author', 36);
             $table->string('Victim', 36);
-            $table->dateTime('Action DateTime');
+            $table->dateTime('ActionDateTime');
             $table->foreignId('UserNameChangeID')->nullable();
             $table->foreignId('EmailChangeID')->nullable();
             $table->foreignId('PassChangeID')->nullable();

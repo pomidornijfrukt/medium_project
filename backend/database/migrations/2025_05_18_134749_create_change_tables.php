@@ -13,41 +13,41 @@ return new class extends Migration {
         // UserName Changes
         Schema::create('user_name_changes', function (Blueprint $table) {
             $table->id('UserNameChangeID');
-            $table->string('Old UserName');
-            $table->string('New UserName');
+            $table->string('OldUserName');
+            $table->string('NewUserName');
             $table->timestamps();
         });
 
         // Email Changes
         Schema::create('email_changes', function (Blueprint $table) {
             $table->id('EmailChangeID');
-            $table->string('Old Email');
-            $table->string('New Email');
+            $table->string('OldEmail');
+            $table->string('NewEmail');
             $table->timestamps();
         });
 
         // Password Changes
         Schema::create('password_changes', function (Blueprint $table) {
             $table->id('PassChangeID');
-            $table->string('Old Password Hash');
-            $table->string('New Password Hash');
+            $table->string('OldPasswordHash');
+            $table->string('NewPasswordHash');
             $table->timestamps();
         });
 
         // Role Changes
         Schema::create('role_changes', function (Blueprint $table) {
             $table->id('RoleChangeID');
-            $table->string('Old Role ID', 50);
-            $table->string('New Role ID', 50);
+            $table->string('OldRoleID', 50);
+            $table->string('NewRoleID', 50);
             $table->timestamps();
 
-            $table->foreign('Old Role ID')
-                ->references('Role Name')
+            $table->foreign('OldRoleID')
+                ->references('RoleName')
                 ->on('roles')
                 ->onDelete('cascade');
 
-            $table->foreign('New Role ID')
-                ->references('Role Name')
+            $table->foreign('NewRoleID')
+                ->references('RoleName')
                 ->on('roles')
                 ->onDelete('cascade');
         });
@@ -58,6 +58,9 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('change_tables');
+        Schema::dropIfExists('role_changes');
+        Schema::dropIfExists('password_changes');
+        Schema::dropIfExists('email_changes');
+        Schema::dropIfExists('user_name_changes');
     }
 };

@@ -15,9 +15,7 @@ class Post extends Model
         'Topic',
         'Content',
         'Status',
-        'LastEditedAt',
-        'ParentPostID',
-        'PostType'
+        'LastEditedAt'
     ];
 
     protected $casts = [
@@ -30,7 +28,7 @@ class Post extends Model
         return $this->belongsTo(User::class, 'Author', 'UID');
     }    public function tags()
     {
-        return $this->belongsToMany(Tag::class, 'Tag is Used', 'PostID', 'TagName')
+        return $this->belongsToMany(Tag::class, 'tag_is_used', 'PostID', 'TagName')
             ->withTimestamps()
             ->using(TagIsUsed::class);
     }

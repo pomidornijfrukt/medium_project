@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->foreign('Role')
-                ->references('Role Name')
+                ->references('RoleName')
                 ->on('roles')
                 ->onDelete('restrict');
         });
