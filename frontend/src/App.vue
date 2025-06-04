@@ -1,11 +1,14 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const handleLogout = async () => {
   await authStore.logout()
+  // Redirect to homepage after logout
+  await router.push('/')
 }
 </script>
 

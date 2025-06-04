@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePostStore } from '@/stores/post.js'
 import { useAuthStore } from '@/stores/auth.js'
@@ -118,6 +118,14 @@ import { useAuthStore } from '@/stores/auth.js'
 const router = useRouter()
 const postStore = usePostStore()
 const authStore = useAuthStore()
+
+// Watch for authentication state changes
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (!isLoggedIn && authStore.initialized) {
+    console.log('🚫 User logged out, redirecting to home...')
+    router.push('/')
+  }
+}, { immediate: false })
 
 const form = ref({
   title: '',

@@ -220,14 +220,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminStore } from '@/stores/admin'
 import UserManageModal from '@/components/UserManageModal.vue'
 import UserPostsModal from '@/components/UserPostsModal.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const adminStore = useAdminStore()
+
+// Watch for authentication state changes
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (!isLoggedIn && authStore.initialized) {
+    console.log('🚫 Admin logged out, redirecting to home...')
+    router.push('/')
+  }
+}, { immediate: false })
 
 const activeTab = ref('users')
 const showUserModal = ref(false)
@@ -295,8 +305,6 @@ const truncateContent = (content) => {
 }
 
 // Watch for tab changes and load data accordingly
-import { watch } from 'vue'
-
 watch(activeTab, (newTab) => {
   if (newTab === 'posts' && adminStore.allPosts.length === 0) {
     loadPosts()

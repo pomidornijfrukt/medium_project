@@ -69,6 +69,11 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/debug-auth',
+      name: 'debug-auth',
+      component: () => import('../components/AuthDebug.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       redirect: '/'

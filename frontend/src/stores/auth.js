@@ -19,7 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => {
     return isLoggedIn.value && user.value?.Role === 'admin'
   })
-
   // Initialize user data if token exists
   const initializeAuth = async () => {
     console.log('🔐 Initializing auth state...')
@@ -36,11 +35,9 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('🔐 User data already exists, setting initialized to true')
       initialized.value = true
       return
-    }
-
-    // Try to fetch user data with the token
+    }    // Try to fetch user data with the token
     try {
-      console.log('🔐 Fetching user data with token...')
+      console.log('🔐 Fetching user data with token...', token.value.substring(0, 10) + '...')
       const response = await fetch(`${API_BASE_URL}/user`, {
         headers: {
           'Authorization': `Bearer ${token.value}`,
@@ -48,18 +45,30 @@ export const useAuthStore = defineStore('auth', () => {
         }
       })
 
+      console.log('🔐 API Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
         console.log('🔐 User data fetched successfully:', data)
-        user.value = data.user || data.data
-        initialized.value = true
+        
+        // Handle the response structure from the backend
+        if (data.success && data.data && data.data.user) {
+          user.value = data.data.user
+          initialized.value = true
+          console.log('🔐 User authenticated successfully:', user.value.Username)
+        } else {
+          console.log('🔐 Invalid response structure:', data)
+          clearAuthData()
+        }
       } else {
-        console.log('🔐 Token validation failed, clearing auth data')
+        const errorText = await response.text()
+        console.log('🔐 Token validation failed, status:', response.status, 'Response:', errorText)
         // Token is invalid, clear everything
         clearAuthData()
       }
     } catch (err) {
       console.error('🔐 Failed to initialize auth:', err)
+      console.error('🔐 Error details:', err.message)
       // Network error or other issue, clear auth data
       clearAuthData()
     }
@@ -159,15 +168,80 @@ export const useAuthStore = defineStore('auth', () => {
         console.error('Logout API call failed:', err)
       }
     }
+      clearAuthData()
+  }
+  
+  const updateProfile = async (profileData) => {
+    loading.value = true
+    error.value = null
     
-    clearAuthData()
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: JSON.stringify(profileData)
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Update local user data
+        user.value = { ...user.value, ...data.data }
+        return { success: true }
+      } else {
+        error.value = data.message || data.errors || 'Profile update failed'
+        return { success: false, error: error.value }
+      }
+    } catch (err) {
+      error.value = 'Network error occurred'
+      return { success: false, error: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updatePassword = async (passwordData) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: JSON.stringify(passwordData)
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        return { success: true, message: data.message }
+      } else {
+        error.value = data.message || data.errors || 'Password update failed'
+        return { success: false, error: error.value }
+      }
+    } catch (err) {
+      error.value = 'Network error occurred'
+      return { success: false, error: error.value }
+    } finally {
+      loading.value = false
+    }
   }
 
   const clearError = () => {
     error.value = null
+  }  // Auto-initialize when store is created
+  console.log('🔐 Auth store created, token exists:', !!token.value)
+  if (token.value) {
+    console.log('🔐 Token found:', token.value.substring(0, 20) + '...')
   }
-
-  // Auto-initialize when store is created
   initializeAuth()
 
   return {
@@ -182,6 +256,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     clearError,
-    initializeAuth
+    initializeAuth,
+    updateProfile,
+    updatePassword
   }
 })

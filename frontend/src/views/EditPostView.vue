@@ -150,6 +150,14 @@ const router = useRouter()
 const postStore = usePostStore()
 const authStore = useAuthStore()
 
+// Watch for authentication state changes
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (!isLoggedIn && authStore.initialized) {
+    console.log('🚫 User logged out, redirecting to home...')
+    router.push('/')
+  }
+}, { immediate: false })
+
 const post = computed(() => postStore.currentPost)
 const tagInput = ref('')
 
