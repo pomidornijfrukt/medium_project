@@ -9,7 +9,6 @@ class OptimizedHttpClient {
   constructor() {
     this.defaultHeaders = {
       'Accept': 'application/json',
-      'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive'
     }
@@ -17,7 +16,7 @@ class OptimizedHttpClient {
 
   async request(url, options = {}) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5-second timeout (reduced from 8)
+    const timeoutId = setTimeout(() => controller.abort(), 8000) // 8-second timeout
 
     try {
       const startTime = performance.now()
@@ -28,28 +27,19 @@ class OptimizedHttpClient {
           ...this.defaultHeaders,
           ...options.headers
         },
-        signal: controller.signal,
-        keepalive: true // Enable HTTP keep-alive for better performance
+        signal: controller.signal
       })
 
       clearTimeout(timeoutId)
       const endTime = performance.now()
-      const duration = Math.round(endTime - startTime)
-      
-      if (duration > 1000) {
-        console.warn(`⚠️ Slow API Request: ${url} took ${duration}ms`)
-      } else {
-        console.log(`🚀 API Request to ${url} completed in ${duration}ms`)
-      }
+      console.log(`🚀 API Request to ${url} completed in ${Math.round(endTime - startTime)}ms`)
 
       return response
     } catch (error) {
       clearTimeout(timeoutId)
       if (error.name === 'AbortError') {
-        console.error(`🔥 Request timeout: ${url} took longer than 5 seconds`)
         throw new Error('Request timed out. Please check your connection.')
       }
-      console.error(`🔥 Network error for ${url}:`, error.message)
       throw error
     }
   }
@@ -93,7 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Try to fetch user data with the token
     try {
-      console.log('🔐 Fetching user data with token...')
+      console.log('🔐 Fetching user data with token...', token.value.substring(0, 10) + '...')
       
       const response = await httpClient.request(`${API_BASE_URL}/user`, {
         method: 'GET',
@@ -106,7 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('🔐 User data fetched successfully')
+        console.log('🔐 User data fetched successfully:', data)
         
         // Handle the response structure from the backend
         if (data.success && data.data && data.data.user) {
@@ -118,12 +108,14 @@ export const useAuthStore = defineStore('auth', () => {
           clearAuthData()
         }
       } else {
-        console.log('🔐 Token validation failed, status:', response.status)
+        const errorText = await response.text()
+        console.log('🔐 Token validation failed, status:', response.status, 'Response:', errorText)
         // Token is invalid, clear everything
         clearAuthData()
       }
     } catch (err) {
-      console.error('🔐 Failed to initialize auth:', err.message)
+      console.error('🔐 Failed to initialize auth:', err)
+      console.error('🔐 Error details:', err.message)
       error.value = err.message
       // Network error or other issue, clear auth data
       clearAuthData()

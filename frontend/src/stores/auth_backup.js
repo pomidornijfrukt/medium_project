@@ -4,59 +4,6 @@ import { ref, computed } from 'vue'
 // API base URL configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6969/api'
 
-// Create a singleton HTTP client with optimizations
-class OptimizedHttpClient {
-  constructor() {
-    this.defaultHeaders = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    }
-  }
-
-  async request(url, options = {}) {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5-second timeout (reduced from 8)
-
-    try {
-      const startTime = performance.now()
-      
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...this.defaultHeaders,
-          ...options.headers
-        },
-        signal: controller.signal,
-        keepalive: true // Enable HTTP keep-alive for better performance
-      })
-
-      clearTimeout(timeoutId)
-      const endTime = performance.now()
-      const duration = Math.round(endTime - startTime)
-      
-      if (duration > 1000) {
-        console.warn(`⚠️ Slow API Request: ${url} took ${duration}ms`)
-      } else {
-        console.log(`🚀 API Request to ${url} completed in ${duration}ms`)
-      }
-
-      return response
-    } catch (error) {
-      clearTimeout(timeoutId)
-      if (error.name === 'AbortError') {
-        console.error(`🔥 Request timeout: ${url} took longer than 5 seconds`)
-        throw new Error('Request timed out. Please check your connection.')
-      }
-      console.error(`🔥 Network error for ${url}:`, error.message)
-      throw error
-    }
-  }
-}
-
-const httpClient = new OptimizedHttpClient()
-
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(localStorage.getItem('auth_token'))
@@ -72,7 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => {
     return isLoggedIn.value && user.value?.Role === 'admin'
   })
-
   // Initialize user data if token exists
   const initializeAuth = async () => {
     console.log('🔐 Initializing auth state...')
@@ -89,16 +35,13 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('🔐 User data already exists, setting initialized to true')
       initialized.value = true
       return
-    }
-
-    // Try to fetch user data with the token
+    }    // Try to fetch user data with the token
     try {
-      console.log('🔐 Fetching user data with token...')
-      
-      const response = await httpClient.request(`${API_BASE_URL}/user`, {
-        method: 'GET',
+      console.log('🔐 Fetching user data with token...', token.value.substring(0, 10) + '...')
+      const response = await fetch(`${API_BASE_URL}/user`, {
         headers: {
-          'Authorization': `Bearer ${token.value}`
+          'Authorization': `Bearer ${token.value}`,
+          'Accept': 'application/json'
         }
       })
 
@@ -106,7 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('🔐 User data fetched successfully')
+        console.log('🔐 User data fetched successfully:', data)
         
         // Handle the response structure from the backend
         if (data.success && data.data && data.data.user) {
@@ -118,13 +61,14 @@ export const useAuthStore = defineStore('auth', () => {
           clearAuthData()
         }
       } else {
-        console.log('🔐 Token validation failed, status:', response.status)
+        const errorText = await response.text()
+        console.log('🔐 Token validation failed, status:', response.status, 'Response:', errorText)
         // Token is invalid, clear everything
         clearAuthData()
       }
     } catch (err) {
-      console.error('🔐 Failed to initialize auth:', err.message)
-      error.value = err.message
+      console.error('🔐 Failed to initialize auth:', err)
+      console.error('🔐 Error details:', err.message)
       // Network error or other issue, clear auth data
       clearAuthData()
     }
@@ -137,16 +81,16 @@ export const useAuthStore = defineStore('auth', () => {
     initialized.value = true
     localStorage.removeItem('auth_token')
   }
-
   const register = async (userData) => {
     loading.value = true
     error.value = null
     
     try {
-      const response = await httpClient.request(`${API_BASE_URL}/register`, {
+      const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           username: userData.username,
@@ -169,7 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: error.value }
       }
     } catch (err) {
-      error.value = err.message || 'Network error occurred'
+      error.value = 'Network error occurred'
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -181,10 +125,11 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     
     try {
-      const response = await httpClient.request(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(credentials)
       })
@@ -202,7 +147,7 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: error.value }
       }
     } catch (err) {
-      error.value = err.message || 'Network error occurred'
+      error.value = 'Network error occurred'
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -212,17 +157,18 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     if (token.value) {
       try {
-        await httpClient.request(`${API_BASE_URL}/logout`, {
+        await fetch(`${API_BASE_URL}/logout`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token.value}`
+            'Authorization': `Bearer ${token.value}`,
+            'Accept': 'application/json'
           }
         })
       } catch (err) {
         console.error('Logout API call failed:', err)
       }
     }
-    clearAuthData()
+      clearAuthData()
   }
   
   const updateProfile = async (profileData) => {
@@ -230,10 +176,11 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     
     try {
-      const response = await httpClient.request(`${API_BASE_URL}/user/profile`, {
+      const response = await fetch(`${API_BASE_URL}/user/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token.value}`
         },
         body: JSON.stringify(profileData)
@@ -250,7 +197,7 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: error.value }
       }
     } catch (err) {
-      error.value = err.message || 'Network error occurred'
+      error.value = 'Network error occurred'
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -262,10 +209,11 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     
     try {
-      const response = await httpClient.request(`${API_BASE_URL}/user/password`, {
+      const response = await fetch(`${API_BASE_URL}/user/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token.value}`
         },
         body: JSON.stringify(passwordData)
@@ -280,7 +228,7 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: error.value }
       }
     } catch (err) {
-      error.value = err.message || 'Network error occurred'
+      error.value = 'Network error occurred'
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -289,9 +237,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const clearError = () => {
     error.value = null
-  }
-
-  // Auto-initialize when store is created
+  }  // Auto-initialize when store is created
   console.log('🔐 Auth store created, token exists:', !!token.value)
   if (token.value) {
     console.log('🔐 Token found:', token.value.substring(0, 20) + '...')

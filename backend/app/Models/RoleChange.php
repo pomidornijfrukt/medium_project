@@ -11,8 +11,8 @@ class RoleChange extends Model
 
     protected $primaryKey = 'RoleChangeID';
     protected $fillable = [
-        'Old Role ID',
-        'New Role ID'
+        'OldRoleID',
+        'NewRoleID'
     ];
 
     public function action()
@@ -22,11 +22,11 @@ class RoleChange extends Model
 
     public function oldRole()
     {
-        return $this->belongsTo(Role::class, 'Old Role ID', 'Role Name');
+        return $this->belongsTo(Role::class, 'OldRoleID', 'RoleName');
     }
 
     public function newRole()
     {
-        return $this->belongsTo(Role::class, 'New Role ID', 'Role Name');
+        return $this->belongsTo(Role::class, 'NewRoleID', 'RoleName');
     }
 }

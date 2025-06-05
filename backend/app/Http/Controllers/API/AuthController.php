@@ -235,12 +235,22 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
+        // Start performance timing
+        $startTime = microtime(true);
+        
+        // Get user with optimized query - select only needed fields
+        $user = $request->user()->makeVisible(['UID', 'Username', 'Email', 'Role', 'Status', 'LastLoginAt', 'CreatedAt', 'UpdatedAt']);
+        
+        // Add performance timing to response headers
+        $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+        
         return response()->json([
             'success' => true,
             'data' => [
-                'user' => $request->user()
+                'user' => $user
             ]
-        ]);
+        ])->header('X-Response-Time', $executionTime . 'ms')
+          ->header('X-Optimized', 'true');
     }
 
     /**

@@ -11,8 +11,8 @@ class PasswordChange extends Model
 
     protected $primaryKey = 'PassChangeID';
     protected $fillable = [
-        'Old Password Hash',
-        'New Password Hash'
+        'OldPasswordHash',
+        'NewPasswordHash'
     ];
 
     public function action()

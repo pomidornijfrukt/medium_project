@@ -11,8 +11,8 @@ class EmailChange extends Model
 
     protected $primaryKey = 'EmailChangeID';
     protected $fillable = [
-        'Old Email',
-        'New Email'
+        'OldEmail',
+        'NewEmail'
     ];
 
     public function action()

@@ -209,8 +209,8 @@ class UserController extends Controller
         // Track changes
         if ($request->has('username') && $request->username !== $user->Username) {
             $usernameChange = UserNameChange::create([
-                'Old UserName' => $user->Username,
-                'New UserName' => $request->username
+                'OldUserName' => $user->Username,
+                'NewUserName' => $request->username
             ]);
             
             Action::create([
@@ -225,8 +225,8 @@ class UserController extends Controller
         
         if ($request->has('email') && $request->email !== $user->Email) {
             $emailChange = EmailChange::create([
-                'Old Email' => $user->Email,
-                'New Email' => $request->email
+                'OldEmail' => $user->Email,
+                'NewEmail' => $request->email
             ]);
             
             Action::create([
@@ -310,8 +310,8 @@ class UserController extends Controller
         
         // Track password change
         $passwordChange = PasswordChange::create([
-            'Old Password Hash' => $user->Password,
-            'New Password Hash' => Hash::make($request->password)
+            'OldPasswordHash' => $user->Password,
+            'NewPasswordHash' => Hash::make($request->password)
         ]);
         
         Action::create([
@@ -393,7 +393,7 @@ class UserController extends Controller
         }
         
         $validator = Validator::make($request->all(), [
-            'role' => 'required|string|exists:roles,Role Name',
+            'role' => 'required|string|exists:roles,RoleName',
         ]);
         
         if ($validator->fails()) {
@@ -413,8 +413,8 @@ class UserController extends Controller
         
         // Track role change
         $roleChange = RoleChange::create([
-            'Old Role ID' => $user->Role,
-            'New Role ID' => $request->role
+            'OldRoleID' => $user->Role,
+            'NewRoleID' => $request->role
         ]);
         
         Action::create([

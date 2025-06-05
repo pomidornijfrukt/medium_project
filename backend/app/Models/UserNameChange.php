@@ -11,8 +11,8 @@ class UserNameChange extends Model
 
     protected $primaryKey = 'UserNameChangeID';
     protected $fillable = [
-        'Old UserName',
-        'New UserName'
+        'OldUserName',
+        'NewUserName'
     ];
 
     public function action()
