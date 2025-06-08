@@ -15,21 +15,42 @@ a {
   text-decoration: none;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+/* Accessibility defaults */
+a:focus-visible {
+  outline: 2px solid rgba(105, 29, 255, 0.8);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Interactive elements focus styles */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(105, 29, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  a:hover {
+    background-color: rgba(105, 29, 255, 0.3);
   }
+}
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+@media (hover: hover) {
+  a:hover {
+    background-color: rgba(105, 29, 255, 0.15);
   }
 }
