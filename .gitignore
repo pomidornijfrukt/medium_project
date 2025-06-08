@@ -1,0 +1,84 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+.nuxt/
+.next/
+.cache/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# Compiled binary addons
+build/Release/
+
+# Laravel specific
+storage/app/public/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+storage/logs/
+bootstrap/cache/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test files (keep specific test directories but ignore temp test files)
+check_data.php
+fix_posts.php
+simple_tag_test.php
+
+# Development files
+*.backup
+*.bak
+
+# Documentation build files
+public/documentation/
+
+# Package lock files (you might want to commit these, but they can be large)
+# package-lock.json

@@ -21,6 +21,10 @@ export default defineConfig({
   server: {
     port: 8888,
     host: true,
-    open: true
+    open: true,
+    hmr: process.env.CODESPACES ? false : {
+      port: 8889,
+      clientPort: 8889
+    }
   },
 })
