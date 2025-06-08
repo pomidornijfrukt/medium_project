@@ -85,10 +85,12 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // Wait for auth initialization to complete
+  // Only initialize if not already initialized or in progress
   if (!authStore.initialized) {
-    console.log('⏳ Waiting for auth initialization...')
+    console.log('⏳ Auth not initialized, starting initialization...')
     await authStore.initializeAuth()
+  } else {
+    console.log('✅ Auth already initialized, proceeding...')
   }
 
   // Check if route requires authentication
