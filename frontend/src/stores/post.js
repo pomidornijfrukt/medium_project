@@ -14,16 +14,18 @@ export const usePostStore = defineStore('post', () => {
     perPage: 10,
     total: 0
   })
-  const cacheLoading = ref(false)
   const hasNewPosts = ref(false)
 
-  const posts = computed(() => allPosts.value)
-  // Improved cache management with longer timeouts and smarter invalidation
+  const posts = computed(() => allPosts.value)  // Improved cache management with longer timeouts and smarter invalidation
   const CACHE_KEYS = {
     POSTS: 'homepage_posts_cache',
     PAGINATION: 'homepage_pagination_cache',
     TIMESTAMP: 'homepage_cache_timestamp',
-    VERSION: 'homepage_cache_version'
+    VERSION: 'homepage_cache_version',
+    // Per-page cache keys
+    PAGE_PREFIX: 'homepage_page_',
+    PAGE_PAGINATION_PREFIX: 'homepage_page_pagination_',
+    PAGE_TIMESTAMP_PREFIX: 'homepage_page_timestamp_'
   }
 
   const savePostsToCache = (posts, paginationData) => {
@@ -48,7 +50,6 @@ export const usePostStore = defineStore('post', () => {
       clearPostsCache()
     }
   }
-
   const loadPostsFromCache = () => {
     try {
       const cachedPosts = localStorage.getItem(CACHE_KEYS.POSTS)
@@ -61,7 +62,7 @@ export const usePostStore = defineStore('post', () => {
         const paginationData = JSON.parse(cachedPagination)
         const cacheAge = Date.now() - parseInt(timestamp)
         
-        // Extended cache validity: 15 minutes instead of 5
+        // Use same cache validity as in fetchFreshPosts: 15 minutes
         const cacheValidMinutes = 15
         const isCacheValid = cacheAge < cacheValidMinutes * 60 * 1000
         
@@ -78,14 +79,14 @@ export const usePostStore = defineStore('post', () => {
           console.log('📋 Cache invalid:', { isCacheValid, isVersionValid, isDataValid })
           clearPostsCache()
         }
-      }      return false
+      }
+      return false
     } catch (error) {
       console.warn('Failed to load posts from cache:', error)
       clearPostsCache()
       return false
     }
   }
-
   const clearPostsCache = () => {
     try {
       localStorage.removeItem(CACHE_KEYS.POSTS)
@@ -98,10 +99,87 @@ export const usePostStore = defineStore('post', () => {
     }
   }
 
+  // Per-page cache functions for smart pagination
+  const savePageToCache = (page, posts, paginationData) => {
+    try {
+      const cacheData = {
+        posts,
+        pagination: paginationData,
+        timestamp: Date.now(),
+        version: '1.0'
+      }
+      
+      localStorage.setItem(`${CACHE_KEYS.PAGE_PREFIX}${page}`, JSON.stringify(cacheData.posts))
+      localStorage.setItem(`${CACHE_KEYS.PAGE_PAGINATION_PREFIX}${page}`, JSON.stringify(cacheData.pagination))
+      localStorage.setItem(`${CACHE_KEYS.PAGE_TIMESTAMP_PREFIX}${page}`, cacheData.timestamp.toString())
+      
+      console.log(`📋 Page ${page} saved to cache:`, posts.length, 'posts')
+    } catch (error) {
+      console.warn(`Failed to save page ${page} to cache:`, error)
+    }
+  }
+
+  const loadPageFromCache = (page) => {
+    try {
+      const cachedPosts = localStorage.getItem(`${CACHE_KEYS.PAGE_PREFIX}${page}`)
+      const cachedPagination = localStorage.getItem(`${CACHE_KEYS.PAGE_PAGINATION_PREFIX}${page}`)
+      const timestamp = localStorage.getItem(`${CACHE_KEYS.PAGE_TIMESTAMP_PREFIX}${page}`)
+
+      if (cachedPosts && cachedPagination && timestamp) {
+        const posts = JSON.parse(cachedPosts)
+        const paginationData = JSON.parse(cachedPagination)
+        const cacheAge = Date.now() - parseInt(timestamp)
+        
+        // Use same cache validity as main cache: 15 minutes
+        const cacheValidMinutes = 15
+        const isCacheValid = cacheAge < cacheValidMinutes * 60 * 1000
+        
+        // Validate cache structure
+        const isDataValid = Array.isArray(posts) && posts.length > 0 && paginationData.total >= 0
+        
+        if (isCacheValid && isDataValid) {
+          allPosts.value = posts
+          pagination.value = paginationData
+          console.log(`📋 Loaded page ${page} from cache (age: ${Math.round(cacheAge / 1000)} seconds)`)
+          return true
+        } else {
+          console.log(`📋 Page ${page} cache invalid:`, { isCacheValid, isDataValid })
+          clearPageCache(page)
+        }
+      }
+      return false
+    } catch (error) {
+      console.warn(`Failed to load page ${page} from cache:`, error)
+      clearPageCache(page)
+      return false
+    }
+  }
+
+  const clearPageCache = (page) => {
+    try {
+      localStorage.removeItem(`${CACHE_KEYS.PAGE_PREFIX}${page}`)
+      localStorage.removeItem(`${CACHE_KEYS.PAGE_PAGINATION_PREFIX}${page}`)
+      localStorage.removeItem(`${CACHE_KEYS.PAGE_TIMESTAMP_PREFIX}${page}`)
+      console.log(`📋 Page ${page} cache cleared`)
+    } catch (error) {
+      console.warn(`Failed to clear page ${page} cache:`, error)
+    }
+  }
+
+  const clearAllPageCaches = () => {
+    try {
+      // Clear up to 20 pages (should be more than enough)
+      for (let i = 1; i <= 20; i++) {
+        clearPageCache(i)
+      }
+      console.log('📋 All page caches cleared')
+    } catch (error) {
+      console.warn('Failed to clear all page caches:', error)
+    }
+  }
+
   const checkForNewPosts = (freshPosts, cachedPosts) => {
-    if (freshPosts.length !== cachedPosts.length) return true
-    
-    // Check if the first few posts are the same (most recent posts)
+    if (freshPosts.length !== cachedPosts.length) return true    // Check if the first few posts are the same (most recent posts)
     for (let i = 0; i < Math.min(3, freshPosts.length); i++) {
       if (freshPosts[i].PostID !== cachedPosts[i].PostID) return true
       if (new Date(freshPosts[i].updated_at) > new Date(cachedPosts[i].updated_at)) return true
@@ -109,76 +187,55 @@ export const usePostStore = defineStore('post', () => {
     return false
   }
 
-  const fetchPosts = async (page = 1, search = '', useCache = true) => {    console.log('🔍 fetchPosts called with:', { page, search, useCache })
-    
-    // For page 1 and no search, try to load from cache first
-    // BUT bypass cache if new posts were detected in background
-    const shouldUseCache = useCache && page === 1 && !search.trim() && !hasNewPosts.value
-    console.log('🔍 shouldUseCache:', shouldUseCache, { hasNewPosts: hasNewPosts.value })
+  const fetchPosts = async (page = 1, search = '', useCache = true) => {
+    console.log('🔍 fetchPosts called with:', { page, search, useCache })
+    error.value = null
 
+    // Smart caching: use cache for any page if no search and cache is enabled
+    const shouldUseCache = useCache && !search.trim() && !hasNewPosts.value
+    
     if (shouldUseCache) {
-      console.log('🔍 Attempting to load from cache...')
-      cacheLoading.value = true
+      console.log(`🔍 Attempting cache-first load for page ${page}...`)
       
-      // Check if cache exists and is valid
-      const cachedPosts = localStorage.getItem(CACHE_KEYS.POSTS)
-      const cachedPagination = localStorage.getItem(CACHE_KEYS.PAGINATION)
-      const timestamp = localStorage.getItem(CACHE_KEYS.TIMESTAMP)
+      let cacheLoaded = false
       
-      console.log('🔍 Cache data found:', { 
-        hasPosts: !!cachedPosts, 
-        hasPagination: !!cachedPagination, 
-        hasTimestamp: !!timestamp 
-      })
+      // For page 1, use the main cache
+      if (page === 1) {
+        cacheLoaded = loadPostsFromCache()
+        if (cacheLoaded) {
+          console.log('✅ Page 1 loaded from main cache - NO LOADING SCREEN!')
+          // Start background monitoring for updates (silent)
+          startBackgroundMonitoring()
+        }
+      } else {
+        // For other pages, use per-page cache
+        cacheLoaded = loadPageFromCache(page)
+        if (cacheLoaded) {
+          console.log(`✅ Page ${page} loaded from per-page cache - NO LOADING SCREEN!`)
+        }
+      }
       
-      if (cachedPosts && cachedPagination && timestamp) {
-        const cacheAge = Date.now() - parseInt(timestamp)
-        const cacheValidMinutes = 5
-        const isCacheValid = cacheAge < cacheValidMinutes * 60 * 1000
-        
-        console.log('🔍 Cache age:', Math.round(cacheAge / 1000), 'seconds. Valid:', isCacheValid)
-        
-        if (isCacheValid) {
-          try {
-            const posts = JSON.parse(cachedPosts)
-            const paginationData = JSON.parse(cachedPagination)
-            
-            // Update store with cached data
-            allPosts.value = posts
-            pagination.value = paginationData
-            cacheLoading.value = false
-              console.log('✅ Successfully loaded', posts.length, 'posts from cache - NO API CALL!')
-            
-            // Start background monitoring using dedicated function
-            startBackgroundMonitoring()
-            
-            return { 
-              success: true, 
-              data: { data: [...posts] },
-              fromCache: true,
-              hasUpdates: false
-            }
-          } catch (parseError) {
-            console.warn('Failed to parse cached data:', parseError)
-            clearPostsCache()
-          }
-        } else {
-          console.log('📋 Cache expired, clearing old cache')
-          clearPostsCache()
-        }      }
-      cacheLoading.value = false
+      if (cacheLoaded) {
+        return { 
+          success: true, 
+          data: { data: [...allPosts.value] },
+          fromCache: true
+        }
+      }
     } else {
-      // Cache bypassed - either no useCache flag, not page 1, has search, or new posts detected
+      // Cache bypassed - either no useCache flag, has search, or new posts detected
       if (hasNewPosts.value) {
         console.log('🚀 Bypassing cache due to new posts detected in background!')
+      } else if (search.trim()) {
+        console.log('🚀 Bypassing cache due to search query')
       } else {
-        console.log('🚀 Bypassing cache - not cacheable request')
+        console.log('🚀 Bypassing cache - useCache = false')
       }
     }
 
-    // No cache available or not using cache, fetch fresh data
-    console.log('🌐 Fetching fresh data from API...')
-    return await fetchFreshPosts(page, search, shouldUseCache)
+    // No cache available or not using cache, fetch fresh data with loading state
+    console.log(`🌐 No cached data for page ${page}, showing loading and fetching from API...`)
+    return await fetchFreshPosts(page, search, !search.trim())
   }
   // Smart update checking with visibility-aware logic
   const checkForUpdatesOnly = async (page = 1, search = '') => {
@@ -280,19 +337,24 @@ export const usePostStore = defineStore('post', () => {
           lastPage: data.data.last_page || 1,
           perPage: data.data.per_page || 10,
           total: data.data.total || 0
-        }
-
-        // Check if we have new posts compared to current posts
+        }        // Check if we have new posts compared to current posts
         const hasUpdates = allPosts.value.length > 0 && checkForNewPosts(freshPosts, allPosts.value)
-        
-        // Update store with fresh data
+          // Update store with fresh data
         const oldPosts = [...allPosts.value]
         allPosts.value = freshPosts
         pagination.value = freshPagination
-          // Save to cache if this is the first page with no search
-        if (page === 1 && !search.trim()) {
-          savePostsToCache(freshPosts, freshPagination)
-          console.log('📋 Posts saved to cache for future use')
+        
+        // Save to cache based on page and search criteria
+        if (!search.trim()) {
+          if (page === 1) {
+            // Save page 1 to main cache
+            savePostsToCache(freshPosts, freshPagination)
+            console.log('📋 Page 1 posts saved to main cache for future use')
+          } else {
+            // Save other pages to per-page cache
+            savePageToCache(page, freshPosts, freshPagination)
+            console.log(`📋 Page ${page} posts saved to per-page cache for future use`)
+          }
         }
         
         console.log('Successfully loaded fresh posts:', allPosts.value.length)
@@ -877,10 +939,14 @@ export const usePostStore = defineStore('post', () => {
         
         // Reset error count on successful check
         consecutiveErrors = 0
-        
-        if (result.success && result.hasUpdates) {
+          if (result.success && result.hasUpdates) {
           console.log('🆕 New posts detected - updating cache!')
           hasNewPosts.value = true
+          
+          // Clear all caches when new posts are detected
+          clearPostsCache()
+          clearAllPageCaches()
+          
           consecutiveNoUpdates = 0
           currentInterval = 120000 // Reset to 2 minutes when updates found
           
@@ -1008,8 +1074,7 @@ export const usePostStore = defineStore('post', () => {
     performanceMetrics.value.errorRate = 
       (performanceMetrics.value.apiErrors / performanceMetrics.value.totalRequests) * 100
   }
-  
-  const getPerformanceReport = () => {
+    const getPerformanceReport = () => {
     const metrics = performanceMetrics.value
     console.log('📊 Post Store Performance Metrics:')
     console.log(`- Cache Hit Rate: ${metrics.cacheHitRate.toFixed(1)}%`)
@@ -1020,6 +1085,7 @@ export const usePostStore = defineStore('post', () => {
     
     return metrics
   }
+  
   return {
     allPosts,
     currentPost,
@@ -1027,7 +1093,6 @@ export const usePostStore = defineStore('post', () => {
     error,
     pagination,
     posts,
-    cacheLoading,
     hasNewPosts,
     fetchPosts,
     createPost,
@@ -1041,6 +1106,7 @@ export const usePostStore = defineStore('post', () => {
     createReply,
     fetchLinkedPosts,
     deletePost,
+    getPerformanceReport,
     // Export cache helper functions
     getPostFromCache,
     buildReplyChainFromCache,

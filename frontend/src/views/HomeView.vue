@@ -48,7 +48,7 @@ const fetchTags = async (useCache = true) => {
 
 const changePage = async (page) => {
   if (page >= 1 && page <= postStore.pagination.lastPage) {
-    await fetchPosts(page, false) // Don't use cache for pagination
+    await fetchPosts(page, true) // Use smart caching for pagination
   }
 }
 

@@ -116,7 +116,6 @@ import { usePostStore } from '@/stores/post.js'
 import { useAuthStore } from '@/stores/auth.js'
 import Tag from '@/components/Tag.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
 const postStore = usePostStore()
