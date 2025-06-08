@@ -10,13 +10,12 @@ export const useTagStore = defineStore('tag', () => {
   const tagPosts = ref([])
   const loading = ref(false)
   const error = ref(null)
-  const cacheLoading = ref(false)
-  const hasNewTags = ref(false)
 
   // Cache management
   const CACHE_KEYS = {
     TAGS: 'homepage_tags_cache',
-    TIMESTAMP: 'homepage_tags_timestamp'  }
+    TIMESTAMP: 'homepage_tags_timestamp'
+  }
 
   const saveTagsToCache = (tags) => {
     try {
@@ -63,152 +62,37 @@ export const useTagStore = defineStore('tag', () => {
       console.warn('Failed to clear tags cache:', error)
     }
   }
-  const checkForNewTags = (freshTags, cachedTags) => {
-    if (freshTags.length !== cachedTags.length) return true
-    
-    // Check if any tag names are different
-    const freshNames = new Set(freshTags.map(tag => tag.TagName))
-    const cachedNames = new Set(cachedTags.map(tag => tag.TagName))
-    
-    if (freshNames.size !== cachedNames.size) return true
-    
-    for (const name of freshNames) {
-      if (!cachedNames.has(name)) return true
-    }
-    
-    return false
-  }
 
-  // Actions
+  // Actions - Simplified fetchTags without monitoring
   const fetchTags = async (useCache = true) => {
-    console.log('🔍 fetchTags called with:', { useCache })
-    
-    // Try to load from cache first
-    // BUT bypass cache if new tags were detected in background
-    const shouldUseCache = useCache && !hasNewTags.value
-    console.log('🔍 shouldUseCache:', shouldUseCache, { hasNewTags: hasNewTags.value })
-    
-    if (shouldUseCache) {
-      console.log('🔍 Attempting to load tags from cache...')
-      cacheLoading.value = true
-      
-      // Check if cache exists and is valid
-      const cachedTags = localStorage.getItem(CACHE_KEYS.TAGS)
-      const timestamp = localStorage.getItem(CACHE_KEYS.TIMESTAMP)
-      
-      console.log('🔍 Cache data found:', { 
-        hasTags: !!cachedTags, 
-        hasTimestamp: !!timestamp 
-      })
-      
-      if (cachedTags && timestamp) {
-        const cacheAge = Date.now() - parseInt(timestamp)
-        const cacheValidMinutes = 10
-        const isCacheValid = cacheAge < cacheValidMinutes * 60 * 1000
-        
-        console.log('🔍 Cache age:', Math.round(cacheAge / 1000), 'seconds. Valid:', isCacheValid)
-        
-        if (isCacheValid) {
-          try {
-            const tags = JSON.parse(cachedTags)
-            
-            // Update store with cached data
-            allTags.value = tags
-            cacheLoading.value = false
-              console.log('✅ Successfully loaded', tags.length, 'tags from cache - NO API CALL!')
-            
-            // Start background monitoring using dedicated function
-            startBackgroundTagMonitoring()
-            
-            return { 
-              success: true, 
-              data: [...tags],
-              fromCache: true,
-              hasUpdates: false
-            }
-          } catch (parseError) {
-            console.warn('Failed to parse cached tag data:', parseError)
-            clearTagsCache()
-          }
-        } else {
-          console.log('🏷️ Cache expired, clearing old cache')
-          clearTagsCache()
-        }      }
-      cacheLoading.value = false
-    } else {
-      // Cache bypassed - either no useCache flag or new tags detected
-      if (hasNewTags.value) {
-        console.log('🚀 Bypassing tag cache due to new tags detected in background!')
-      } else {
-        console.log('🚀 Bypassing tag cache - not using cache')
-      }
-    }
+    error.value = null
 
-    // No cache available or not using cache, fetch fresh data
-    console.log('🌐 Fetching fresh tags from API...')
-    return await fetchFreshTags(true)
-  }
-
-  const checkForUpdatesOnly = async () => {
-    try {
-      const url = `${API_BASE_URL}/tags`
-      console.log('🔍 Checking for tag updates from:', url)
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to check for tag updates')
-      }
-
-      if (data.success && data.data) {
-        const freshTags = data.data || []
-        
-        // Check if we have new tags compared to current cached tags
-        const hasUpdates = checkForNewTags(freshTags, allTags.value)
-        
-        console.log('🔍 Tag update check complete. Has updates:', hasUpdates)
+    // Cache-first approach: check cache without loading state
+    if (useCache) {
+      const cacheLoaded = loadTagsFromCache()
+      if (cacheLoaded) {
+        console.log('✅ Tags loaded from cache immediately - NO LOADING SCREEN!')
         return { 
           success: true, 
-          hasUpdates: hasUpdates,
-          freshData: data.data
+          data: [...allTags.value],
+          fromCache: true
         }
-      } else {
-        throw new Error('Invalid response format')
       }
-    } catch (err) {
-      console.error('Error checking for tag updates:', err)
-      return { success: false, error: err.message, hasUpdates: false }
     }
-  }
-  const fetchFreshTags = async (saveToCache = false) => {
+
+    // No cache available - show loading and fetch fresh data
+    console.log('🌐 No cached tags, showing loading and fetching from API...')
     loading.value = true
-    error.value = null
-    hasNewTags.value = false
-
-    console.log('🌐 fetchFreshTags called with:', { saveToCache })
-
+    
     try {
-      const url = `${API_BASE_URL}/tags`
-      console.log('Fetching fresh tags from:', url)
-
-      const response = await fetch(url, {
+      const response = await fetch(`${API_BASE_URL}/tags`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       })
 
-      console.log('Response status:', response.status)
-      
       const data = await response.json()
-      console.log('Response data:', data)
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch tags')
@@ -216,43 +100,26 @@ export const useTagStore = defineStore('tag', () => {
 
       if (data.success && data.data) {
         const freshTags = data.data || []
-
-        // Check if we have new tags compared to current tags
-        const hasUpdates = allTags.value.length > 0 && checkForNewTags(freshTags, allTags.value)
-        
-        // Update store with fresh data
         allTags.value = freshTags
+        saveTagsToCache(freshTags)
         
-        // Save to cache
-        if (saveToCache) {
-          saveTagsToCache(freshTags)
-          console.log('🏷️ Tags saved to cache for future use')
-        }
-        
-        console.log('Successfully loaded fresh tags:', allTags.value.length)
+        console.log('✅ Fresh tags loaded and cached:', freshTags.length)
         return { 
           success: true, 
           data: data.data,
-          fromCache: false,
-          hasUpdates: hasUpdates
+          fromCache: false
         }
       } else {
         throw new Error('Invalid response format')
       }
     } catch (err) {
-      console.error('Error fetching fresh tags:', err)
+      console.error('Error fetching tags:', err)
       error.value = err.message
       allTags.value = []
       return { success: false, error: err.message, fromCache: false }
     } finally {
       loading.value = false
     }
-  }
-
-  const refreshWithFreshTags = async () => {
-    hasNewTags.value = false
-    const result = await fetchFreshTags(true)
-    return result
   }
 
   const fetchTag = async (tagName) => {
@@ -328,10 +195,12 @@ export const useTagStore = defineStore('tag', () => {
   const clearError = () => {
     error.value = null
   }
+
   const clearCurrentTag = () => {
     currentTag.value = null
     tagPosts.value = []
   }
+
   // Debug function to help test caching
   const debugTagsCache = () => {
     const cachedTags = localStorage.getItem(CACHE_KEYS.TAGS)
@@ -343,37 +212,6 @@ export const useTagStore = defineStore('tag', () => {
     console.log('- Age:', timestamp ? `${Math.round((Date.now() - parseInt(timestamp)) / 1000)}s` : 'N/A')
   }
 
-  // Dedicated background monitoring function for tags
-  const startBackgroundTagMonitoring = () => {
-    const runTagMonitoringCycle = async () => {
-      try {
-        console.log('🔄 Tag background monitoring cycle started...')
-        const result = await checkForUpdatesOnly()
-        
-        if (result.success && result.hasUpdates) {
-          console.log('🆕 New tags detected - auto-updating cache!')
-          hasNewTags.value = true
-          
-          const freshResult = await fetchFreshTags(true)
-          if (freshResult.success) {
-            console.log('✅ Background tag cache update complete!')
-            console.log('🔄 UI will automatically reflect new tags!')
-          }
-        }
-        
-        // Schedule next monitoring cycle
-        setTimeout(runTagMonitoringCycle, 30000)
-      } catch (error) {
-        console.warn('Tag background monitoring cycle failed:', error)
-        // Still schedule next cycle even if this one failed
-        setTimeout(runTagMonitoringCycle, 30000)
-      }
-    }
-    
-    // Start the first cycle after 30 seconds
-    setTimeout(runTagMonitoringCycle, 30000)
-  }
-
   return {
     // State
     allTags,
@@ -381,9 +219,8 @@ export const useTagStore = defineStore('tag', () => {
     tagPosts,
     loading,
     error,
-    cacheLoading,
-    hasNewTags,
-      // Actions
+    
+    // Actions
     fetchTags,
     fetchTag,
     fetchPostsByTag,
@@ -391,8 +228,6 @@ export const useTagStore = defineStore('tag', () => {
     clearCurrentTag,
     loadTagsFromCache,
     clearTagsCache,
-    refreshWithFreshTags,
-    debugTagsCache,
-    startBackgroundTagMonitoring
+    debugTagsCache
   }
 })

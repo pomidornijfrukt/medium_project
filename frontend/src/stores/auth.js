@@ -13,45 +13,66 @@ class OptimizedHttpClient {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive'
     }
+    // Request deduplication for user endpoint
+    this.pendingRequests = new Map()
   }
 
   async request(url, options = {}) {
+    // Check for duplicate user endpoint requests
+    const requestKey = `${options.method || 'GET'}:${url}`
+    if (url.endsWith('/user') && this.pendingRequests.has(requestKey)) {
+      console.log('🔒 Deduplicating user request - returning existing promise')
+      return this.pendingRequests.get(requestKey)
+    }
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 5000) // 5-second timeout (reduced from 8)
 
-    try {
-      const startTime = performance.now()
-      
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...this.defaultHeaders,
-          ...options.headers
-        },
-        signal: controller.signal,
-        keepalive: true // Enable HTTP keep-alive for better performance
-      })
+    const requestPromise = (async () => {
+      try {
+        const startTime = performance.now()
+        
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            ...this.defaultHeaders,
+            ...options.headers
+          },
+          signal: controller.signal,
+          keepalive: true // Enable HTTP keep-alive for better performance
+        })
 
-      clearTimeout(timeoutId)
-      const endTime = performance.now()
-      const duration = Math.round(endTime - startTime)
-      
-      if (duration > 1000) {
-        console.warn(`⚠️ Slow API Request: ${url} took ${duration}ms`)
-      } else {
-        console.log(`🚀 API Request to ${url} completed in ${duration}ms`)
-      }
+        clearTimeout(timeoutId)
+        const endTime = performance.now()
+        const duration = Math.round(endTime - startTime)
+        
+        if (duration > 1000) {
+          console.warn(`⚠️ Slow API Request: ${url} took ${duration}ms`)
+        } else {
+          console.log(`🚀 API Request to ${url} completed in ${duration}ms`)
+        }
 
-      return response
-    } catch (error) {
-      clearTimeout(timeoutId)
-      if (error.name === 'AbortError') {
-        console.error(`🔥 Request timeout: ${url} took longer than 5 seconds`)
-        throw new Error('Request timed out. Please check your connection.')
+        return response
+      } catch (error) {
+        clearTimeout(timeoutId)
+        if (error.name === 'AbortError') {
+          console.error(`🔥 Request timeout: ${url} took longer than 5 seconds`)
+          throw new Error('Request timed out. Please check your connection.')
+        }
+        console.error(`🔥 Network error for ${url}:`, error.message)
+        throw error
+      } finally {
+        // Remove from pending requests when complete
+        this.pendingRequests.delete(requestKey)
       }
-      console.error(`🔥 Network error for ${url}:`, error.message)
-      throw error
+    })()
+
+    // Store promise for deduplication
+    if (url.endsWith('/user')) {
+      this.pendingRequests.set(requestKey, requestPromise)
     }
+
+    return requestPromise
   }
 }
 
@@ -72,62 +93,84 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => {
     return isLoggedIn.value && user.value?.Role === 'admin'
   })
+  // Request deduplication for initialization
+  let initPromise = null
 
   // Initialize user data if token exists
   const initializeAuth = async () => {
-    console.log('🔐 Initializing auth state...')
+    // If already initialized, return immediately
+    if (initialized.value) {
+      console.log('🔐 Auth already initialized, skipping...')
+      return
+    }
+
+    // If initialization is already in progress, return the existing promise
+    if (initPromise) {
+      console.log('🔐 Auth initialization already in progress, waiting...')
+      return initPromise
+    }
+
+    console.log('🔐 Starting auth initialization...')
     
-    // If no token, mark as initialized and return
-    if (!token.value) {
-      console.log('🔐 No token found, setting initialized to true')
-      initialized.value = true
-      return
-    }
-
-    // If we already have user data, mark as initialized
-    if (user.value) {
-      console.log('🔐 User data already exists, setting initialized to true')
-      initialized.value = true
-      return
-    }
-
-    // Try to fetch user data with the token
-    try {
-      console.log('🔐 Fetching user data with token...')
-      
-      const response = await httpClient.request(`${API_BASE_URL}/user`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token.value}`
-        }
-      })
-
-      console.log('🔐 API Response status:', response.status)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('🔐 User data fetched successfully')
-        
-        // Handle the response structure from the backend
-        if (data.success && data.data && data.data.user) {
-          user.value = data.data.user
+    // Create the initialization promise
+    initPromise = (async () => {
+      try {
+        // If no token, mark as initialized and return
+        if (!token.value) {
+          console.log('🔐 No token found, marking as initialized')
           initialized.value = true
-          console.log('🔐 User authenticated successfully:', user.value.Username)
+          return
+        }
+
+        // If we already have user data, mark as initialized
+        if (user.value) {
+          console.log('🔐 User data already exists, marking as initialized')
+          initialized.value = true
+          return
+        }
+
+        // Try to fetch user data with the token
+        console.log('🔐 Fetching user data with token...')
+        
+        const response = await httpClient.request(`${API_BASE_URL}/user`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token.value}`
+          }
+        })
+
+        console.log('🔐 API Response status:', response.status)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('🔐 User data fetched successfully')
+          
+          // Handle the response structure from the backend
+          if (data.success && data.data && data.data.user) {
+            user.value = data.data.user
+            initialized.value = true
+            console.log('🔐 User authenticated successfully:', user.value.Username)
+          } else {
+            console.log('🔐 Invalid response structure:', data)
+            clearAuthData()
+          }
         } else {
-          console.log('🔐 Invalid response structure:', data)
+          console.log('🔐 Token validation failed, status:', response.status)
+          // Token is invalid, clear everything
           clearAuthData()
         }
-      } else {
-        console.log('🔐 Token validation failed, status:', response.status)
-        // Token is invalid, clear everything
+      } catch (err) {
+        console.error('🔐 Failed to initialize auth:', err.message)
+        error.value = err.message
+        // Network error or other issue, clear auth data
         clearAuthData()
+      } finally {
+        // Clear the promise so future calls can proceed
+        initPromise = null
       }
-    } catch (err) {
-      console.error('🔐 Failed to initialize auth:', err.message)
-      error.value = err.message
-      // Network error or other issue, clear auth data
-      clearAuthData()
-    }
+    })()
+
+    return initPromise
   }
 
   // Helper function to clear all auth data
@@ -286,17 +329,17 @@ export const useAuthStore = defineStore('auth', () => {
       loading.value = false
     }
   }
-
   const clearError = () => {
     error.value = null
   }
 
-  // Auto-initialize when store is created
+  // Log store creation for debugging
   console.log('🔐 Auth store created, token exists:', !!token.value)
   if (token.value) {
     console.log('🔐 Token found:', token.value.substring(0, 20) + '...')
   }
-  initializeAuth()
+  // Note: Removed auto-initialization to prevent duplicate calls
+  // Initialization will be handled by main.js
 
   return {
     user,
