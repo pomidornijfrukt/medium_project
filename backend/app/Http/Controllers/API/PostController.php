@@ -213,9 +213,7 @@ class PostController extends Controller
     public function show($id)
     {
         try {
-            $post = Post::with(['author', 'tags', 'linkedPosts' => function($query) {
-                $query->where('Status', 'published')->with(['author', 'tags']);
-            }])->where('PostID', $id)->first();
+            $post = Post::with(['author', 'tags'])->where('PostID', $id)->first();
 
             if (!$post) {
                 return response()->json([
@@ -223,6 +221,10 @@ class PostController extends Controller
                     'message' => 'Post not found'
                 ], 404);
             }
+
+            // Get all linked posts recursively and attach them to the post
+            $linkedPosts = $this->getAllLinkedPostsRecursively($id);
+            $post->linkedPosts = collect($linkedPosts);
 
             return response()->json([
                 'success' => true,
@@ -609,16 +611,13 @@ class PostController extends Controller
                 ], 404);
             }
 
-            $linkedPosts = Post::with(['author', 'tags'])
-                ->where('ParentPostID', $id)
-                ->where('Status', 'published')
-                ->orderBy('created_at', 'asc')
-                ->get();
+            // Get all linked posts recursively (unlimited depth)
+            $allLinkedPosts = $this->getAllLinkedPostsRecursively($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Linked posts retrieved successfully',
-                'data' => $linkedPosts
+                'data' => $allLinkedPosts
             ], 200);
 
         } catch (\Exception $e) {
@@ -628,6 +627,38 @@ class PostController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Recursively get all linked posts for unlimited depth
+     */
+    private function getAllLinkedPostsRecursively($parentId, &$collectedPosts = [], $maxDepth = 10, $currentDepth = 0)
+    {
+        // Prevent infinite recursion
+        if ($currentDepth >= $maxDepth) {
+            return $collectedPosts;
+        }
+
+        // Get direct replies to this parent
+        $directReplies = Post::with(['author', 'tags'])
+            ->where('ParentPostID', $parentId)
+            ->where('Status', 'published')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        foreach ($directReplies as $reply) {
+            $collectedPosts[] = $reply;
+            
+            // Recursively get nested replies
+            $this->getAllLinkedPostsRecursively(
+                $reply->PostID, 
+                $collectedPosts, 
+                $maxDepth, 
+                $currentDepth + 1
+            );
+        }
+
+        return $collectedPosts;
     }
 
     /**
