@@ -84,7 +84,11 @@ export const useTagStore = defineStore('tag', () => {
     console.log('🔍 fetchTags called with:', { useCache })
     
     // Try to load from cache first
-    if (useCache) {
+    // BUT bypass cache if new tags were detected in background
+    const shouldUseCache = useCache && !hasNewTags.value
+    console.log('🔍 shouldUseCache:', shouldUseCache, { hasNewTags: hasNewTags.value })
+    
+    if (shouldUseCache) {
       console.log('🔍 Attempting to load tags from cache...')
       cacheLoading.value = true
       
@@ -111,22 +115,10 @@ export const useTagStore = defineStore('tag', () => {
             // Update store with cached data
             allTags.value = tags
             cacheLoading.value = false
+              console.log('✅ Successfully loaded', tags.length, 'tags from cache - NO API CALL!')
             
-            console.log('✅ Successfully loaded', tags.length, 'tags from cache - NO API CALL!')
-            
-            // Schedule background update check after 30 seconds
-            setTimeout(async () => {
-              try {
-                console.log('🔄 Checking for tag updates in background...')
-                const backgroundResult = await checkForUpdatesOnly()
-                if (backgroundResult.success && backgroundResult.hasUpdates) {
-                  console.log('🆕 New tags found in background!')
-                  hasNewTags.value = true
-                }
-              } catch (error) {
-                console.warn('Background tag update check failed:', error)
-              }
-            }, 30000)
+            // Start background monitoring using dedicated function
+            startBackgroundTagMonitoring()
             
             return { 
               success: true, 
@@ -141,9 +133,15 @@ export const useTagStore = defineStore('tag', () => {
         } else {
           console.log('🏷️ Cache expired, clearing old cache')
           clearTagsCache()
-        }
-      }
+        }      }
       cacheLoading.value = false
+    } else {
+      // Cache bypassed - either no useCache flag or new tags detected
+      if (hasNewTags.value) {
+        console.log('🚀 Bypassing tag cache due to new tags detected in background!')
+      } else {
+        console.log('🚀 Bypassing tag cache - not using cache')
+      }
     }
 
     // No cache available or not using cache, fetch fresh data
@@ -334,7 +332,6 @@ export const useTagStore = defineStore('tag', () => {
     currentTag.value = null
     tagPosts.value = []
   }
-
   // Debug function to help test caching
   const debugTagsCache = () => {
     const cachedTags = localStorage.getItem(CACHE_KEYS.TAGS)
@@ -346,6 +343,37 @@ export const useTagStore = defineStore('tag', () => {
     console.log('- Age:', timestamp ? `${Math.round((Date.now() - parseInt(timestamp)) / 1000)}s` : 'N/A')
   }
 
+  // Dedicated background monitoring function for tags
+  const startBackgroundTagMonitoring = () => {
+    const runTagMonitoringCycle = async () => {
+      try {
+        console.log('🔄 Tag background monitoring cycle started...')
+        const result = await checkForUpdatesOnly()
+        
+        if (result.success && result.hasUpdates) {
+          console.log('🆕 New tags detected - auto-updating cache!')
+          hasNewTags.value = true
+          
+          const freshResult = await fetchFreshTags(true)
+          if (freshResult.success) {
+            console.log('✅ Background tag cache update complete!')
+            console.log('🔄 UI will automatically reflect new tags!')
+          }
+        }
+        
+        // Schedule next monitoring cycle
+        setTimeout(runTagMonitoringCycle, 30000)
+      } catch (error) {
+        console.warn('Tag background monitoring cycle failed:', error)
+        // Still schedule next cycle even if this one failed
+        setTimeout(runTagMonitoringCycle, 30000)
+      }
+    }
+    
+    // Start the first cycle after 30 seconds
+    setTimeout(runTagMonitoringCycle, 30000)
+  }
+
   return {
     // State
     allTags,
@@ -355,8 +383,7 @@ export const useTagStore = defineStore('tag', () => {
     error,
     cacheLoading,
     hasNewTags,
-    
-    // Actions
+      // Actions
     fetchTags,
     fetchTag,
     fetchPostsByTag,
@@ -365,6 +392,7 @@ export const useTagStore = defineStore('tag', () => {
     loadTagsFromCache,
     clearTagsCache,
     refreshWithFreshTags,
-    debugTagsCache
+    debugTagsCache,
+    startBackgroundTagMonitoring
   }
 })

@@ -87,12 +87,12 @@ export const usePostStore = defineStore('post', () => {
     return false
   }
 
-  const fetchPosts = async (page = 1, search = '', useCache = true) => {
-    console.log('🔍 fetchPosts called with:', { page, search, useCache })
+  const fetchPosts = async (page = 1, search = '', useCache = true) => {    console.log('🔍 fetchPosts called with:', { page, search, useCache })
     
     // For page 1 and no search, try to load from cache first
-    const shouldUseCache = useCache && page === 1 && !search.trim()
-    console.log('🔍 shouldUseCache:', shouldUseCache)
+    // BUT bypass cache if new posts were detected in background
+    const shouldUseCache = useCache && page === 1 && !search.trim() && !hasNewPosts.value
+    console.log('🔍 shouldUseCache:', shouldUseCache, { hasNewPosts: hasNewPosts.value })
 
     if (shouldUseCache) {
       console.log('🔍 Attempting to load from cache...')
@@ -125,22 +125,10 @@ export const usePostStore = defineStore('post', () => {
             allPosts.value = posts
             pagination.value = paginationData
             cacheLoading.value = false
+              console.log('✅ Successfully loaded', posts.length, 'posts from cache - NO API CALL!')
             
-            console.log('✅ Successfully loaded', posts.length, 'posts from cache - NO API CALL!')
-            
-            // Schedule background update check after 30 seconds
-            setTimeout(async () => {
-              try {
-                console.log('🔄 Checking for updates in background...')
-                const backgroundResult = await checkForUpdatesOnly(page, search)
-                if (backgroundResult.success && backgroundResult.hasUpdates) {
-                  console.log('🆕 New posts found in background!')
-                  hasNewPosts.value = true
-                }
-              } catch (error) {
-                console.warn('Background update check failed:', error)
-              }
-            }, 30000)
+            // Start background monitoring using dedicated function
+            startBackgroundMonitoring()
             
             return { 
               success: true, 
@@ -155,10 +143,18 @@ export const usePostStore = defineStore('post', () => {
         } else {
           console.log('📋 Cache expired, clearing old cache')
           clearPostsCache()
-        }
-      }
+        }      }
       cacheLoading.value = false
-    }    // No cache available or not using cache, fetch fresh data
+    } else {
+      // Cache bypassed - either no useCache flag, not page 1, has search, or new posts detected
+      if (hasNewPosts.value) {
+        console.log('🚀 Bypassing cache due to new posts detected in background!')
+      } else {
+        console.log('🚀 Bypassing cache - not cacheable request')
+      }
+    }
+
+    // No cache available or not using cache, fetch fresh data
     console.log('🌐 Fetching fresh data from API...')
     return await fetchFreshPosts(page, search, shouldUseCache)
   }
@@ -419,7 +415,6 @@ export const usePostStore = defineStore('post', () => {
     const result = await fetchFreshPosts(page, search, true)
     return result
   }
-
   // Debug function to help test caching
   const debugCache = () => {
     const cachedPosts = localStorage.getItem(CACHE_KEYS.POSTS)
@@ -431,6 +426,37 @@ export const usePostStore = defineStore('post', () => {
     console.log('- Pagination:', cachedPagination ? JSON.parse(cachedPagination) : 'None')
     console.log('- Timestamp:', timestamp ? new Date(parseInt(timestamp)).toLocaleString() : 'None')
     console.log('- Age:', timestamp ? `${Math.round((Date.now() - parseInt(timestamp)) / 1000)}s` : 'N/A')
+  }
+
+  // Dedicated background monitoring function
+  const startBackgroundMonitoring = () => {
+    const runMonitoringCycle = async () => {
+      try {
+        console.log('🔄 Background monitoring cycle started...')
+        const result = await checkForUpdatesOnly(1, '')
+        
+        if (result.success && result.hasUpdates) {
+          console.log('🆕 New posts detected - auto-updating cache!')
+          hasNewPosts.value = true
+          
+          const freshResult = await fetchFreshPosts(1, '', true)
+          if (freshResult.success) {
+            console.log('✅ Background cache update complete!')
+            console.log('🔄 UI will automatically reflect new data!')
+          }
+        }
+        
+        // Schedule next monitoring cycle
+        setTimeout(runMonitoringCycle, 30000)
+      } catch (error) {
+        console.warn('Background monitoring cycle failed:', error)
+        // Still schedule next cycle even if this one failed
+        setTimeout(runMonitoringCycle, 30000)
+      }
+    }
+    
+    // Start the first cycle after 30 seconds
+    setTimeout(runMonitoringCycle, 30000)
   }
 
   return {
@@ -448,7 +474,7 @@ export const usePostStore = defineStore('post', () => {
     updatePost,
     loadPostsFromCache,
     clearPostsCache,
-    refreshWithFreshPosts,
-    debugCache
+    refreshWithFreshPosts,    debugCache,
+    startBackgroundMonitoring
   }
 })
