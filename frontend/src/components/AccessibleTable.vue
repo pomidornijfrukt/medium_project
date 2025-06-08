@@ -142,8 +142,8 @@
           <tr v-if="loading" role="row">
             <td :colspan="totalColumns" class="px-6 py-12 text-center" role="gridcell">
               <div class="flex items-center justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" aria-hidden="true"></div>
-                <span class="ml-3 text-gray-600">{{ loadingText || 'Loading...' }}</span>
+                <LoadingSpinner size="large" color="indigo" class="mr-3" :aria-hidden="true" />
+                <span class="text-gray-600">{{ loadingText || 'Loading...' }}</span>
               </div>
             </td>
           </tr>
@@ -248,6 +248,7 @@ import { ref, computed, watch } from 'vue'
 import { useAccessibility } from '@/composables/useAccessibility'
 import AccessibleInput from './AccessibleInput.vue'
 import AccessibleButton from './AccessibleButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const props = defineProps({
   data: {

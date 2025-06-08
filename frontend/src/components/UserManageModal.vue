@@ -24,28 +24,21 @@
                     <div>
                       <span class="font-medium text-gray-500">Email:</span>
                       <p class="text-gray-900">{{ user?.Email }}</p>
-                    </div>
-                    <div>
+                    </div>                    <div>
                       <span class="font-medium text-gray-500">Status:</span>
-                      <span :class="[
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        user?.Status === 'active' ? 'bg-green-100 text-green-800' :
-                        user?.Status === 'banned' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      ]">
-                        {{ user?.Status }}
-                      </span>
+                      <Tag
+                        :label="user?.Status"
+                        size="medium"
+                        :variant="user?.Status === 'active' ? 'green' : user?.Status === 'banned' ? 'red' : 'yellow'"
+                      />
                     </div>
                     <div>
                       <span class="font-medium text-gray-500">Current Role:</span>
-                      <span :class="[
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        user?.Role === 'admin' ? 'bg-red-100 text-red-800' :
-                        user?.Role === 'moderator' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      ]">
-                        {{ user?.Role || 'member' }}
-                      </span>
+                      <Tag
+                        :label="user?.Role || 'member'"
+                        size="medium"
+                        :variant="user?.Role === 'admin' ? 'red' : user?.Role === 'moderator' ? 'yellow' : 'green'"
+                      />
                     </div>
                     <div>
                       <span class="font-medium text-gray-500">Joined:</span>
@@ -89,14 +82,10 @@
         <!-- Modal Actions -->
         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
           <button 
-            @click="updateRole"
-            :disabled="loading || selectedRole === user?.Role"
+            @click="updateRole"            :disabled="loading || selectedRole === user?.Role"
             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            <svg v-if="loading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <LoadingSpinner v-if="loading" size="medium" color="white" :aria-hidden="true" class="-ml-1 mr-3" />
             {{ loading ? 'Updating...' : 'Update Role' }}
           </button>
           <button 
@@ -114,6 +103,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAdminStore } from '@/stores/admin'
+import Tag from '@/components/Tag.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const props = defineProps({
   user: {

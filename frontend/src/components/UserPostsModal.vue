@@ -22,10 +22,9 @@
               </p>
               
               <div class="mt-4">
-                <!-- Loading State -->
-                <div v-if="loading" class="text-center py-8">
-                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p class="mt-2 text-gray-500">Loading posts...</p>
+                <!-- Loading State -->                <div v-if="loading" class="text-center py-8">
+                  <LoadingSpinner size="large" color="blue" class="mx-auto mb-2" aria-label="Loading posts" />
+                  <p class="text-gray-500">Loading posts...</p>
                 </div>
 
                 <!-- No Posts -->
@@ -102,6 +101,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const props = defineProps({
   user: {
