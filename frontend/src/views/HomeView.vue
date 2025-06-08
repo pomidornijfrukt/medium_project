@@ -48,7 +48,7 @@ const fetchTags = async (useCache = true) => {
 
 const changePage = async (page) => {
   if (page >= 1 && page <= postStore.pagination.lastPage) {
-    await fetchPosts(page, searchQuery.value, false) // Don't use cache for pagination
+    await fetchPosts(page, false) // Don't use cache for pagination
   }
 }
 
@@ -103,15 +103,20 @@ const refreshAll = async () => {
 
 // Load data on component mount
 onMounted(async () => {
-  isLoading.value = true
-  
-  // Load posts (will use cache if available)
-  await Promise.all([
-    fetchPosts(), // This will show cached posts immediately if available
-    fetchTags()
+  // Try to load posts and tags (cache-first approach)
+  const [postResult, tagResult] = await Promise.all([
+    fetchPosts(), // This will load immediately from cache if available, or fetch fresh data
+    fetchTags()   // This will load immediately from cache if available, or fetch fresh data
   ])
   
+  // Check if both results came from cache
+  const hasPostCache = postResult && postResult.fromCache
+  const hasTagCache = tagResult && tagResult.fromCache
+  
+  // Ensure loading state is off (the store functions handle their own loading states)
   isLoading.value = false
+  
+  console.log('🏠 HomeView mounted - Posts from cache:', hasPostCache, 'Tags from cache:', hasTagCache)
 })
 </script>
 
@@ -236,12 +241,6 @@ onMounted(async () => {
                 Dismiss
               </button>
             </div>
-          </div>
-
-          <!-- Cache Loading Indicator -->
-          <div v-if="postStore.cacheLoading" class="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <LoadingSpinner size="small" color="green" :aria-hidden="true" class="mr-2" />
-            <span class="text-sm">Loading cached posts...</span>
           </div>
 
           <!-- Loading State -->
