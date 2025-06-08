@@ -56,41 +56,51 @@
           <div class="text-3xl font-bold text-yellow-600">{{ userStats.draftPosts }}</div>
           <div class="text-gray-600">Draft Posts</div>
         </div>
-      </div>
-
-      <!-- User Posts -->
+      </div>      <!-- User Posts -->
       <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <header class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-900">My Posts</h2>
-          <router-link 
-            to="/create" 
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-          >
-            Create New Post
-          </router-link>
-        </header>
-
-        <!-- Loading State -->
+        <header class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">My Posts</h2>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <!-- Refresh Button -->
+            <RefreshButton 
+              @refresh="refreshUserPosts"
+              :is-loading="postStore.loading"
+              variant="secondary"
+              size="small"
+              :show-mobile-text="true"
+            />
+            
+            <!-- Create New Post Button -->
+            <router-link 
+              to="/create" 
+              class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 text-center"
+            >
+              Create New Post
+            </router-link>
+          </div>
+        </header>        <!-- Loading State -->
         <div v-if="postStore.loading" class="flex justify-center items-center h-32">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <span class="ml-3 text-gray-600">Loading posts...</span>
+          <LoadingSpinner size="large" color="indigo" class="mr-3" aria-label="Loading posts" />
+          <span class="text-gray-600">Loading posts...</span>
         </div>
 
         <!-- Posts List -->
-        <div v-else-if="userPosts.length > 0" class="divide-y divide-gray-200">
-          <div 
+        <div v-else-if="userPosts.length > 0" class="divide-y divide-gray-200">        <div 
             v-for="post in userPosts" 
-            :key="post.PID"
+            :key="post.PostID"
             class="px-6 py-4 hover:bg-gray-50 transition-colors duration-200"
           >
             <div class="flex justify-between items-start">
               <div class="flex-1">
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">
                   <router-link 
-                    :to="`/posts/${post.PID}`"
+                    :to="`/posts/${post.PostID}`"
                     class="hover:text-indigo-600 transition-colors duration-200"
                   >
-                    {{ post.Title }}
+                    {{ post.Topic }}
                   </router-link>
                 </h3>
                 <p class="text-gray-600 text-sm mb-2">
@@ -101,14 +111,14 @@
                   <span v-if="post.updated_at !== post.created_at">
                     Updated {{ formatDate(post.updated_at) }}
                   </span>
-                  <span class="capitalize">{{ post.status || 'published' }}</span>
+                  <span class="capitalize">{{ post.Status || 'published' }}</span>
                 </div>
               </div>
               
               <!-- Action Buttons -->
               <div class="flex space-x-2 ml-4">
                 <router-link 
-                  :to="`/edit/${post.PID}`"
+                  :to="`/edit/${post.PostID}`"
                   class="text-indigo-600 hover:text-indigo-800 text-sm font-medium transition-colors duration-200"
                 >
                   Edit
@@ -296,6 +306,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePostStore } from '@/stores/post.js'
 import { useAuthStore } from '@/stores/auth.js'
+import RefreshButton from '@/components/RefreshButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
 const postStore = usePostStore()
@@ -328,7 +340,7 @@ watch(() => authStore.isLoggedIn, (isLoggedIn) => {
 
 const userPosts = computed(() => {
   return postStore.posts.filter(post => 
-    authStore.user && post.UID === authStore.user.UID
+    authStore.user && post.Author === authStore.user.UID
   )
 })
 
@@ -363,13 +375,17 @@ const truncateContent = (content, maxLength = 120) => {
 }
 
 const deletePost = async (post) => {
-  if (confirm(`Are you sure you want to delete "${post.Title}"? This action cannot be undone.`)) {
-    const success = await postStore.deletePost(post.PID)
+  if (confirm(`Are you sure you want to delete "${post.Topic}"? This action cannot be undone.`)) {
+    const success = await postStore.deletePost(post.PostID)
     if (success) {
       // Refresh posts after deletion
       await loadUserPosts()
     }
   }
+}
+
+const refreshUserPosts = async () => {
+  await loadUserPosts()
 }
 
 const loadUserPosts = async () => {

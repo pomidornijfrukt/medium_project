@@ -3,6 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
 import { usePostStore } from '@/stores/post.js'
 import { useTagStore } from '@/stores/tag.js'
+import Tag from '@/components/Tag.vue'
+import RefreshButton from '@/components/RefreshButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 // Store instances
 const authStore = useAuthStore()
@@ -13,7 +16,6 @@ const tagStore = useTagStore()
 const searchQuery = ref('')
 const isLoading = ref(true)
 const showUpdateNotification = ref(false)
-const showTagUpdateNotification = ref(false)
 
 // Methods
 const fetchPosts = async (page = 1, useCache = true) => {
@@ -38,16 +40,6 @@ const fetchPosts = async (page = 1, useCache = true) => {
 const fetchTags = async (useCache = true) => {
   try {
     const result = await tagStore.fetchTags(useCache)
-    
-    // Show notification if we had cached data and found updates
-    if (result.success && tagStore.hasNewTags.value) {
-      showTagUpdateNotification.value = true
-      // Auto-hide notification after 8 seconds
-      setTimeout(() => {
-        showTagUpdateNotification.value = false
-      }, 8000)
-    }
-    
     return result
   } catch (error) {
     console.error('Error fetching tags:', error)
@@ -88,12 +80,25 @@ const dismissUpdateNotification = () => {
 }
 
 const refreshTags = async () => {
-  showTagUpdateNotification.value = false
-  await tagStore.refreshWithFreshTags()
+  await tagStore.fetchTags(false) // Force fresh fetch by bypassing cache
 }
 
 const dismissTagUpdateNotification = () => {
-  showTagUpdateNotification.value = false
+  // No longer needed - tags don't have background monitoring
+}
+
+const refreshAll = async () => {
+  isLoading.value = true
+  try {
+    await Promise.all([
+      fetchPosts(1, false), // Force fresh fetch
+      fetchTags(false) // Force fresh fetch
+    ])
+  } catch (error) {
+    console.error('Error refreshing data:', error)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // Load data on component mount
@@ -173,22 +178,36 @@ onMounted(async () => {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Posts Section -->
         <div class="lg:col-span-2">
-          <!-- Search Bar -->
-          <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="flex gap-4">
-              <input 
-                v-model="searchQuery"
-                @keyup.enter="searchPosts"
-                type="text"
-                placeholder="Search posts..."
-                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              <button 
-                @click="searchPosts"
-                class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200"
-              >
-                Search
-              </button>
+          <!-- Search Bar and Refresh Button -->
+          <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+            <div class="flex flex-col gap-3 sm:gap-4">
+              <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <input 
+                  v-model="searchQuery"
+                  @keyup.enter="searchPosts"
+                  type="text"
+                  placeholder="Search posts..."
+                  class="flex-1 px-4 py-3 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base sm:text-sm"
+                />
+                <button 
+                  @click="searchPosts"
+                  class="w-full sm:w-auto px-6 py-3 sm:py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
+                >
+                  <span class="sm:hidden">Search Posts</span>
+                  <span class="hidden sm:inline">Search</span>
+                </button>
+              </div>
+              
+              <!-- Refresh Button -->
+              <div class="flex justify-center sm:justify-end">
+                <RefreshButton 
+                  @refresh="refreshAll"
+                  :is-loading="isLoading"
+                  variant="secondary"
+                  size="small"
+                  :show-mobile-text="true"
+                />
+              </div>
             </div>
           </div>
 
@@ -219,42 +238,15 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Tag Update Notification -->
-          <div 
-            v-if="showTagUpdateNotification" 
-            class="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between"
-          >
-            <div class="flex items-center">
-              <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              <span class="font-medium">New tags are available!</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <button 
-                @click="refreshTags"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors duration-200"
-              >
-                Refresh
-              </button>
-              <button 
-                @click="dismissTagUpdateNotification"
-                class="text-green-700 hover:text-green-900 px-2 py-1 text-sm transition-colors duration-200"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-
           <!-- Cache Loading Indicator -->
           <div v-if="postStore.cacheLoading" class="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+            <LoadingSpinner size="small" color="green" :aria-hidden="true" class="mr-2" />
             <span class="text-sm">Loading cached posts...</span>
           </div>
 
           <!-- Loading State -->
           <div v-if="isLoading || postStore.loading" class="text-center py-12">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <LoadingSpinner size="xl" color="indigo" class="mx-auto mb-4" aria-label="Loading posts" />
             <p class="text-gray-600">Loading posts...</p>
           </div>
 
@@ -304,13 +296,13 @@ onMounted(async () => {
                 
                 <!-- Tags -->
                 <div v-if="post.tags && post.tags.length > 0" class="flex flex-wrap gap-2">
-                  <span 
+                  <Tag
                     v-for="tag in post.tags" 
                     :key="tag.TagName"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
-                  >
-                    {{ tag.TagName }}
-                  </span>
+                    :label="tag.TagName"
+                    size="medium"
+                    variant="indigo"
+                  />
                 </div>
               </div>
             </article>

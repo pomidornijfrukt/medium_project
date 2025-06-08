@@ -49,19 +49,32 @@
     </div>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Users Management Tab -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">      <!-- Users Management Tab -->
       <div v-if="activeTab === 'users'" class="space-y-6">
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Users Management</h2>
-            <p class="text-sm text-gray-500">Manage user accounts and permissions</p>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <h2 class="text-lg font-medium text-gray-900">Users Management</h2>
+                <p class="text-sm text-gray-500">Manage user accounts and permissions</p>
+              </div>
+              
+              <!-- Refresh Button -->
+              <div class="flex justify-center sm:justify-end">
+                <RefreshButton 
+                  @refresh="refreshUsers"
+                  :is-loading="adminStore.loading"
+                  variant="secondary"
+                  size="small"
+                  :show-mobile-text="true"
+                />
+              </div>
+            </div>
           </div>
           
-          <!-- Users List -->
-          <div class="overflow-hidden">
+          <!-- Users List -->          <div class="overflow-hidden">
             <div v-if="adminStore.loading" class="p-6 text-center">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <LoadingSpinner size="large" color="indigo" class="mx-auto" aria-label="Loading users" />
               <p class="mt-2 text-gray-500">Loading users...</p>
             </div>
             
@@ -101,26 +114,19 @@
                         <div class="text-sm text-gray-500">{{ user.Email }}</div>
                       </div>
                     </div>
+                  </td>                  <td class="px-6 py-4 whitespace-nowrap">
+                    <Tag
+                      :label="user.Role || 'member'"
+                      size="medium"
+                      :variant="user.Role === 'admin' ? 'red' : user.Role === 'moderator' ? 'yellow' : 'green'"
+                    />
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="[
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      user.Role === 'admin' ? 'bg-red-100 text-red-800' :
-                      user.Role === 'moderator' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    ]">
-                      {{ user.Role || 'member' }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="[
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      user.Status === 'active' ? 'bg-green-100 text-green-800' :
-                      user.Status === 'banned' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    ]">
-                      {{ user.Status }}
-                    </span>
+                    <Tag
+                      :label="user.Status"
+                      size="medium"
+                      :variant="user.Status === 'active' ? 'green' : user.Status === 'banned' ? 'red' : 'yellow'"
+                    />
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ formatDate(user.created_at) }}
@@ -144,19 +150,31 @@
             </table>
           </div>
         </div>
-      </div>
-
-      <!-- Posts Management Tab -->
+      </div>      <!-- Posts Management Tab -->
       <div v-if="activeTab === 'posts'" class="space-y-6">
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Posts Management</h2>
-            <p class="text-sm text-gray-500">Manage all forum posts</p>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <h2 class="text-lg font-medium text-gray-900">Posts Management</h2>
+                <p class="text-sm text-gray-500">Manage all forum posts</p>
+              </div>
+              
+              <!-- Refresh Button -->
+              <div class="flex justify-center sm:justify-end">
+                <RefreshButton 
+                  @refresh="refreshPosts"
+                  :is-loading="adminStore.loadingPosts"
+                  variant="secondary"
+                  size="small"
+                  :show-mobile-text="true"
+                />
+              </div>
+            </div>
           </div>
-          
-          <div class="p-6">
+            <div class="p-6">
             <div v-if="adminStore.loadingPosts" class="text-center py-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <LoadingSpinner size="large" color="indigo" class="mx-auto" aria-label="Loading posts" />
               <p class="mt-2 text-gray-500">Loading posts...</p>
             </div>
             
@@ -226,6 +244,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useAdminStore } from '@/stores/admin'
 import UserManageModal from '@/components/UserManageModal.vue'
 import UserPostsModal from '@/components/UserPostsModal.vue'
+import Tag from '@/components/Tag.vue'
+import RefreshButton from '@/components/RefreshButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -247,6 +268,14 @@ const selectedUser = ref(null)
 onMounted(async () => {
   await loadUsers()
 })
+
+const refreshUsers = async () => {
+  await adminStore.fetchUsers()
+}
+
+const refreshPosts = async () => {
+  await adminStore.fetchAllPosts()
+}
 
 const loadUsers = async () => {
   await adminStore.fetchUsers()
