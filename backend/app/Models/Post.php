@@ -15,7 +15,9 @@ class Post extends Model
         'Topic',
         'Content',
         'Status',
-        'LastEditedAt'
+        'LastEditedAt',
+        'ParentPostID',
+        'PostType'
     ];
 
     protected $casts = [
