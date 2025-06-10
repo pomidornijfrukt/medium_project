@@ -11,6 +11,34 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
+/**
+ * @OA\Info(
+ *     title="Forum API Documentation",
+ *     version="1.0.0",
+ *     description="API documentation for Laravel Forum application with Vue.js frontend",
+ *     @OA\Contact(
+ *         email="admin@forum.com",
+ *         name="API Support"
+ *     ),
+ *     @OA\License(
+ *         name="MIT",
+ *         url="https://opensource.org/licenses/MIT"
+ *     )
+ * )
+ * 
+ * @OA\Server(
+ *     url=L5_SWAGGER_CONST_HOST,
+ *     description="Forum API Server"
+ * )
+ * 
+ * @OA\SecurityScheme(
+ *     securityScheme="bearerAuth",
+ *     type="http",
+ *     scheme="bearer",
+ *     bearerFormat="JWT",
+ *     description="Enter token in format (Bearer <token>)"
+ * )
+ */
 class AuthController extends Controller
 {
     /**

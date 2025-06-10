@@ -206,7 +206,7 @@ class PostController extends Controller
      *     @OA\Response(
      *         response=404,
      *         description="Post not found",
-     *         @OA\JsonContent(ref="#/components/schemas/NotFoundError")
+     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
      *     )
      * )
      */
@@ -275,12 +275,12 @@ class PostController extends Controller
      *     @OA\Response(
      *         response=403,
      *         description="Unauthorized to update this post",
-     *         @OA\JsonContent(ref="#/components/schemas/UnauthorizedError")
+     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
      *     ),
      *     @OA\Response(
      *         response=404,
      *         description="Post not found",
-     *         @OA\JsonContent(ref="#/components/schemas/NotFoundError")
+     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
      *     )
      * )
      */
@@ -390,12 +390,12 @@ class PostController extends Controller
      *     @OA\Response(
      *         response=403,
      *         description="Unauthorized to delete this post",
-     *         @OA\JsonContent(ref="#/components/schemas/UnauthorizedError")
+     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
      *     ),
      *     @OA\Response(
      *         response=404,
      *         description="Post not found",
-     *         @OA\JsonContent(ref="#/components/schemas/NotFoundError")
+     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
      *     )
      * )
      */

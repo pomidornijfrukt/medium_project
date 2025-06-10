@@ -1,20 +1,548 @@
 {
     "openapi": "3.0.0",
     "info": {
-        "title": "Medium Clone API",
-        "description": "API documentation for Medium Clone application",
+        "title": "Forum API Documentation",
+        "description": "API documentation for Laravel Forum application with Vue.js frontend",
         "contact": {
-            "email": "admin@mediumclone.com"
+            "name": "API Support",
+            "email": "admin@forum.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
         },
         "version": "1.0.0"
     },
     "servers": [
         {
-            "url": "/api",
-            "description": "API Server"
+            "url": "http://localhost:6969",
+            "description": "Forum API Server"
         }
     ],
     "paths": {
+        "/api/posts/advanced-search": {
+            "get": {
+                "tags": [
+                    "Advanced Posts"
+                ],
+                "summary": "Advanced post search with filtering and aggregation",
+                "operationId": "b539d7e15e2b52e03d1b3577367fc0ba",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search term for title and content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "description": "Comma-separated tag names to include",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "exclude_tags",
+                        "in": "query",
+                        "description": "Comma-separated tag names to exclude",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "author_role",
+                        "in": "query",
+                        "description": "Filter by author role",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "admin",
+                                "moderator",
+                                "member"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "min_replies",
+                        "in": "query",
+                        "description": "Minimum number of replies",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Sort criteria",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "recent",
+                                "popular",
+                                "replies",
+                                "engagement"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Advanced search results with aggregated data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "posts": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "post_id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "title": {
+                                                                "type": "string",
+                                                                "example": "How to learn Laravel"
+                                                            },
+                                                            "author": {
+                                                                "type": "string",
+                                                                "example": "john_doe"
+                                                            },
+                                                            "author_role": {
+                                                                "type": "string",
+                                                                "example": "member"
+                                                            },
+                                                            "reply_count": {
+                                                                "type": "integer",
+                                                                "example": 5
+                                                            },
+                                                            "unique_repliers": {
+                                                                "type": "integer",
+                                                                "example": 3
+                                                            },
+                                                            "tag_count": {
+                                                                "type": "integer",
+                                                                "example": 2
+                                                            },
+                                                            "engagement_score": {
+                                                                "type": "number",
+                                                                "example": 8.5
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "aggregations": {
+                                                    "properties": {
+                                                        "total_results": {
+                                                            "type": "integer",
+                                                            "example": 25
+                                                        },
+                                                        "avg_replies": {
+                                                            "type": "number",
+                                                            "example": 3.2
+                                                        },
+                                                        "role_distribution": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/posts/trending": {
+            "get": {
+                "tags": [
+                    "Advanced Posts"
+                ],
+                "summary": "Get trending posts using advanced analytics",
+                "operationId": "c760d8b405a9b64f35287886d465ecea",
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "description": "Time period for trending analysis",
+                        "schema": {
+                            "type": "string",
+                            "default": "7d",
+                            "enum": [
+                                "24h",
+                                "7d",
+                                "30d"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trending posts with analytics data"
+                    }
+                }
+            }
+        },
+        "/api/posts/recommendations/{userId}": {
+            "get": {
+                "tags": [
+                    "Advanced Posts"
+                ],
+                "summary": "Get personalized post recommendations using collaborative filtering",
+                "operationId": "5ef27e7ae83b9a4a53234624e10c2672",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "User ID for recommendations",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Personalized post recommendations"
+                    }
+                }
+            }
+        },
+        "/api/analytics/user-activity": {
+            "get": {
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Get user activity analytics with GROUP BY and JOIN",
+                "operationId": "522ef1749e82a46b35ea5b7ba6b4012b",
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "description": "Time period for analytics (7days, 30days, 90days, 1year)",
+                        "schema": {
+                            "type": "string",
+                            "default": "30days",
+                            "enum": [
+                                "7days",
+                                "30days",
+                                "90days",
+                                "1year"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User activity analytics retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "posts_by_role": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "role": {
+                                                                "type": "string",
+                                                                "example": "member"
+                                                            },
+                                                            "post_count": {
+                                                                "type": "integer",
+                                                                "example": 45
+                                                            },
+                                                            "user_count": {
+                                                                "type": "integer",
+                                                                "example": 12
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "daily_activity": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "date": {
+                                                                "type": "string",
+                                                                "example": "2024-01-15"
+                                                            },
+                                                            "posts_created": {
+                                                                "type": "integer",
+                                                                "example": 8
+                                                            },
+                                                            "users_registered": {
+                                                                "type": "integer",
+                                                                "example": 3
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "user_engagement": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "username": {
+                                                                "type": "string",
+                                                                "example": "john_doe"
+                                                            },
+                                                            "role": {
+                                                                "type": "string",
+                                                                "example": "member"
+                                                            },
+                                                            "total_posts": {
+                                                                "type": "integer",
+                                                                "example": 15
+                                                            },
+                                                            "last_active": {
+                                                                "type": "string",
+                                                                "format": "date-time"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/analytics/content-insights": {
+            "get": {
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Get content insights with advanced GROUP BY and JOIN operations",
+                "operationId": "3cf9ef2252e0c57124a15cddb6a007f2",
+                "responses": {
+                    "200": {
+                        "description": "Content insights retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "popular_tags": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "tag_name": {
+                                                                "type": "string",
+                                                                "example": "javascript"
+                                                            },
+                                                            "tag_description": {
+                                                                "type": "string",
+                                                                "example": "JavaScript programming"
+                                                            },
+                                                            "post_count": {
+                                                                "type": "integer",
+                                                                "example": 25
+                                                            },
+                                                            "unique_authors": {
+                                                                "type": "integer",
+                                                                "example": 8
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "content_by_status": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "status": {
+                                                                "type": "string",
+                                                                "example": "published"
+                                                            },
+                                                            "count": {
+                                                                "type": "integer",
+                                                                "example": 150
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "top_contributors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "username": {
+                                                                "type": "string",
+                                                                "example": "author123"
+                                                            },
+                                                            "role": {
+                                                                "type": "string",
+                                                                "example": "member"
+                                                            },
+                                                            "post_count": {
+                                                                "type": "integer",
+                                                                "example": 12
+                                                            },
+                                                            "avg_content_length": {
+                                                                "type": "number",
+                                                                "example": 256.7
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/analytics/user-behavior": {
+            "get": {
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Get user behavior analytics using complex JOINs",
+                "operationId": "a06455cecc62b100e16ca67222f56238",
+                "responses": {
+                    "200": {
+                        "description": "User behavior analytics retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "role_changes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "from_role": {
+                                                                "type": "string",
+                                                                "example": "member"
+                                                            },
+                                                            "to_role": {
+                                                                "type": "string",
+                                                                "example": "moderator"
+                                                            },
+                                                            "change_count": {
+                                                                "type": "integer",
+                                                                "example": 5
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "user_activity_summary": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "username": {
+                                                                "type": "string",
+                                                                "example": "jane_doe"
+                                                            },
+                                                            "total_actions": {
+                                                                "type": "integer",
+                                                                "example": 25
+                                                            },
+                                                            "posts_created": {
+                                                                "type": "integer",
+                                                                "example": 8
+                                                            },
+                                                            "role_changes_received": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/analytics/post-relationships": {
+            "get": {
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Analyze post relationships and threading using JOINs",
+                "operationId": "f17cb200ab6352a8f2b07834ca280eb6",
+                "responses": {
+                    "200": {
+                        "description": "Post relationship analytics retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/register": {
             "post": {
                 "tags": [
@@ -341,13 +869,13 @@
                 ]
             }
         },
-        "/posts": {
+        "/api/posts": {
             "get": {
                 "tags": [
                     "Posts"
                 ],
-                "summary": "Display a listing of posts",
-                "operationId": "b729c4184c92e4da62e0f21f91280278",
+                "summary": "Get all published posts",
+                "operationId": "4186b281454d4cf4c67a3254c731218a",
                 "parameters": [
                     {
                         "name": "search",
@@ -412,8 +940,8 @@
                 "tags": [
                     "Posts"
                 ],
-                "summary": "Store a newly created post",
-                "operationId": "8307a2a0573b74dfeef4143b29441eb7",
+                "summary": "Create a new post",
+                "operationId": "c525736cca34af3402c290c5a680dbde",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -494,16 +1022,6 @@
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
                     }
                 },
                 "security": [
@@ -513,13 +1031,13 @@
                 ]
             }
         },
-        "/posts/{id}": {
+        "/api/posts/{id}": {
             "get": {
                 "tags": [
                     "Posts"
                 ],
-                "summary": "Display a specific post",
-                "operationId": "3b447096cc7e521c109b0acfd26e311b",
+                "summary": "Get a specific post",
+                "operationId": "e0f9a2214074a618841855b152721330",
                 "parameters": [
                     {
                         "name": "id",
@@ -568,7 +1086,7 @@
                     "Posts"
                 ],
                 "summary": "Update a post",
-                "operationId": "f1934f60c59a1265937928e5548bffa4",
+                "operationId": "0dec9d9e95078da66ec7717d5b63e8f4",
                 "parameters": [
                     {
                         "name": "id",
@@ -581,7 +1099,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": false,
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -601,22 +1119,16 @@
                                         },
                                         "example": [
                                             "laravel",
-                                            "php"
+                                            "updated"
                                         ]
                                     },
                                     "status": {
                                         "type": "string",
                                         "enum": [
                                             "draft",
-                                            "published",
-                                            "deleted"
+                                            "published"
                                         ],
                                         "example": "published"
-                                    },
-                                    "parent_post_id": {
-                                        "type": "integer",
-                                        "example": null,
-                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -648,16 +1160,6 @@
                             }
                         }
                     },
-                    "404": {
-                        "description": "Post not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
                     "403": {
                         "description": "Unauthorized to update this post",
                         "content": {
@@ -668,12 +1170,12 @@
                             }
                         }
                     },
-                    "422": {
-                        "description": "Validation error",
+                    "404": {
+                        "description": "Post not found",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ValidationError"
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -689,8 +1191,8 @@
                 "tags": [
                     "Posts"
                 ],
-                "summary": "Remove a post",
-                "operationId": "195deeba653a9e153542f13066393040",
+                "summary": "Delete a post",
+                "operationId": "11cb021c9991dd024d16206da5df0ecd",
                 "parameters": [
                     {
                         "name": "id",
@@ -723,8 +1225,8 @@
                             }
                         }
                     },
-                    "404": {
-                        "description": "Post not found",
+                    "403": {
+                        "description": "Unauthorized to delete this post",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -733,8 +1235,8 @@
                             }
                         }
                     },
-                    "403": {
-                        "description": "Unauthorized to delete this post",
+                    "404": {
+                        "description": "Post not found",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -751,13 +1253,13 @@
                 ]
             }
         },
-        "/posts/tag/{tag}": {
+        "/api/posts/tag/{tag}": {
             "get": {
                 "tags": [
                     "Posts"
                 ],
                 "summary": "Get posts by tag",
-                "operationId": "ea77e277b445e14ba7b592e400081bab",
+                "operationId": "bffed346ab5e150f9e725fbc49ade819",
                 "parameters": [
                     {
                         "name": "tag",
@@ -781,28 +1283,13 @@
                                             "example": true
                                         },
                                         "data": {
-                                            "properties": {
-                                                "tag": {
-                                                    "$ref": "#/components/schemas/Tag"
-                                                },
-                                                "posts": {
-                                                    "$ref": "#/components/schemas/PaginatedResponse"
-                                                }
-                                            },
-                                            "type": "object"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Post"
+                                            }
                                         }
                                     },
                                     "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Tag not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -810,13 +1297,95 @@
                 }
             }
         },
-        "/posts/{id}/comments": {
+        "/api/posts/user/{userId}": {
             "get": {
                 "tags": [
                     "Posts"
                 ],
-                "summary": "Get linked posts (comments) for a specific post",
-                "operationId": "47b39eb13d192e75a0fa3d87cee4d75a",
+                "summary": "Get posts by user",
+                "operationId": "151ec3c02b26ee482463164a12c0fc81",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "User ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Posts retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Post"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/posts": {
+            "get": {
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Get current user's posts",
+                "operationId": "ea3dc03fba05e8e6c175d27b38df0092",
+                "responses": {
+                    "200": {
+                        "description": "Posts retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Post"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/posts/{id}/linked": {
+            "get": {
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Get linked posts (comments) for a post",
+                "operationId": "0713a546a3bdef09c47e1c7a1b4415b6",
                 "parameters": [
                     {
                         "name": "id",
@@ -850,81 +1419,17 @@
                                 }
                             }
                         }
-                    },
-                    "404": {
-                        "description": "Post not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Invalid request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
                     }
                 }
             }
         },
-        "/users/{userId}/posts": {
+        "/api/admin/posts": {
             "get": {
                 "tags": [
-                    "Posts"
+                    "Admin"
                 ],
-                "summary": "Get posts by a specific user",
-                "operationId": "78ca2874410051ca80b7cae3d2435bb6",
-                "parameters": [
-                    {
-                        "name": "userId",
-                        "in": "path",
-                        "description": "User ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "description": "Search posts by topic or content",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "description": "Filter posts by status",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "draft",
-                                "published",
-                                "deleted"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "description": "Page number for pagination",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1
-                        }
-                    }
-                ],
+                "summary": "Get all posts for admin (including drafts and deleted)",
+                "operationId": "9b1aaeea3303ec1e2e529a7d6d4afb12",
                 "responses": {
                     "200": {
                         "description": "Posts retrieved successfully",
@@ -937,115 +1442,13 @@
                                             "example": true
                                         },
                                         "data": {
-                                            "properties": {
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/Post"
-                                                    }
-                                                },
-                                                "current_page": {
-                                                    "type": "integer"
-                                                },
-                                                "per_page": {
-                                                    "type": "integer"
-                                                },
-                                                "total": {
-                                                    "type": "integer"
-                                                }
-                                            },
-                                            "type": "object"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Post"
+                                            }
                                         }
                                     },
                                     "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "User not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/user/posts": {
-            "get": {
-                "tags": [
-                    "User Profile"
-                ],
-                "summary": "Get the authenticated user's own posts",
-                "operationId": "ecdad59d2308999beeaa8acf823d2f53",
-                "parameters": [
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "description": "Search within user's posts",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "description": "Filter by post status",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "draft",
-                                "published",
-                                "deleted"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "type",
-                        "in": "query",
-                        "description": "Filter by post type",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "main",
-                                "linked"
-                            ]
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "User's posts retrieved successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/PaginatedResponse"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -2398,12 +2801,27 @@
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
+                "description": "Enter token in format (Bearer <token>)",
                 "bearerFormat": "JWT",
                 "scheme": "bearer"
+            },
+            "sanctum": {
+                "type": "apiKey",
+                "description": "Enter token in format (Bearer <token>)",
+                "name": "Authorization",
+                "in": "header"
             }
         }
     },
     "tags": [
+        {
+            "name": "Advanced Posts",
+            "description": "Advanced Posts"
+        },
+        {
+            "name": "Analytics",
+            "description": "Analytics"
+        },
         {
             "name": "Authentication",
             "description": "Authentication"
@@ -2413,8 +2831,8 @@
             "description": "Posts"
         },
         {
-            "name": "User Profile",
-            "description": "User Profile"
+            "name": "Admin",
+            "description": "Admin"
         },
         {
             "name": "Tags",
@@ -2425,8 +2843,17 @@
             "description": "Users"
         },
         {
+            "name": "User Profile",
+            "description": "User Profile"
+        },
+        {
             "name": "Admin - User Management",
             "description": "Admin - User Management"
+        }
+    ],
+    "security": [
+        {
+            "sanctum": []
         }
     ]
 }
