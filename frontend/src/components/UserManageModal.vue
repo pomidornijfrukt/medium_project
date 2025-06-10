@@ -65,6 +65,32 @@
                   </p>
                 </div>
 
+                <!-- Status Management -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Change Status
+                  </label>
+                  <select 
+                    v-model="selectedStatus" 
+                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="banned">Banned</option>
+                  </select>
+                  <div class="mt-1 text-xs text-gray-500">
+                    <p v-if="selectedStatus === 'active'" class="text-green-600">
+                      🟢 User can access all features and create content
+                    </p>
+                    <p v-else-if="selectedStatus === 'inactive'" class="text-yellow-600">
+                      🟡 User will be automatically logged out and cannot access protected routes
+                    </p>
+                    <p v-else-if="selectedStatus === 'banned'" class="text-red-600">
+                      🔴 User is permanently banned and cannot access the platform
+                    </p>
+                  </div>
+                </div>
+
                 <!-- Error Display -->
                 <div v-if="error" class="bg-red-50 border border-red-200 rounded-md p-3">
                   <p class="text-sm text-red-800">{{ error }}</p>
@@ -82,11 +108,12 @@
         <!-- Modal Actions -->
         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
           <button 
-            @click="updateRole"            :disabled="loading || selectedRole === user?.Role"
+            @click="updateUser"
+            :disabled="loading || !hasChanges"
             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             <LoadingSpinner v-if="loading" size="medium" color="white" :aria-hidden="true" class="-ml-1 mr-3" />
-            {{ loading ? 'Updating...' : 'Update Role' }}
+            {{ loading ? 'Updating...' : hasChanges ? 'Save Changes' : 'No Changes' }}
           </button>
           <button 
             @click="$emit('close')"
@@ -113,10 +140,11 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'role-updated'])
+const emit = defineEmits(['close', 'role-updated', 'status-updated'])
 
 const adminStore = useAdminStore()
 const selectedRole = ref(props.user?.Role || 'member')
+const selectedStatus = ref(props.user?.Status || 'active')
 const loading = ref(false)
 const error = ref(null)
 const success = ref(null)
@@ -125,31 +153,62 @@ const success = ref(null)
 watch(() => props.user, (newUser) => {
   if (newUser) {
     selectedRole.value = newUser.Role || 'member'
+    selectedStatus.value = newUser.Status || 'active'
     error.value = null
     success.value = null
   }
 }, { immediate: true })
 
-const updateRole = async () => {
-  if (selectedRole.value === props.user?.Role) return
+// Check if any changes have been made
+const hasChanges = computed(() => {
+  return selectedRole.value !== props.user?.Role || selectedStatus.value !== props.user?.Status
+})
+
+const updateUser = async () => {
+  if (!hasChanges.value) return
   
   loading.value = true
   error.value = null
   success.value = null
 
   try {
-    const result = await adminStore.updateUserRole(props.user.UID, selectedRole.value)
-    
-    if (result.success) {
-      success.value = `Role updated to ${selectedRole.value} successfully!`
-      emit('role-updated')
+    let results = []
+    let successMessages = []
+
+    // Update role if changed
+    if (selectedRole.value !== props.user?.Role) {
+      const roleResult = await adminStore.updateUserRole(props.user.UID, selectedRole.value)
+      results.push(roleResult)
+      if (roleResult.success) {
+        successMessages.push(`Role updated to ${selectedRole.value}`)
+        emit('role-updated')
+      }
+    }
+
+    // Update status if changed
+    if (selectedStatus.value !== props.user?.Status) {
+      const statusResult = await adminStore.updateUserStatus(props.user.UID, selectedStatus.value)
+      results.push(statusResult)
+      if (statusResult.success) {
+        successMessages.push(`Status updated to ${selectedStatus.value}`)
+        emit('status-updated')
+      }
+    }
+
+    // Check if all updates were successful
+    const allSuccessful = results.every(result => result.success)
+    const anyFailed = results.some(result => !result.success)
+
+    if (allSuccessful && results.length > 0) {
+      success.value = successMessages.join(' and ') + ' successfully!'
       
       // Auto-close after 2 seconds
       setTimeout(() => {
         emit('close')
       }, 2000)
-    } else {
-      error.value = result.error || 'Failed to update role'
+    } else if (anyFailed) {
+      const failedResults = results.filter(result => !result.success)
+      error.value = failedResults.map(result => result.error).join(', ') || 'Some updates failed'
     }
   } catch (err) {
     error.value = err.message || 'An error occurred'

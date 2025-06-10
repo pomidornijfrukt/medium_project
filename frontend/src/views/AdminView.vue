@@ -222,7 +222,8 @@
       v-if="showUserModal"
       :user="selectedUser"
       @close="closeUserModal"
-      @role-updated="handleRoleUpdate"
+      @role-updated="handleUserUpdate"
+      @status-updated="handleUserUpdate"
     />
 
     <!-- User Posts Modal -->
@@ -308,8 +309,8 @@ const closePostsModal = () => {
   selectedUser.value = null
 }
 
-const handleRoleUpdate = () => {
-  // Refresh users list after role update
+const handleUserUpdate = () => {
+  // Refresh users list after role or status update
   loadUsers()
 }
 
