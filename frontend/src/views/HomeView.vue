@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
 import { usePostStore } from '@/stores/post.js'
 import { useTagStore } from '@/stores/tag.js'
@@ -16,6 +16,12 @@ const tagStore = useTagStore()
 const searchQuery = ref('')
 const isLoading = ref(true)
 const showUpdateNotification = ref(false)
+
+// Computed properties
+const userPostCount = computed(() => {
+  if (!authStore.user?.UID) return 0
+  return postStore.posts.filter(post => post.Author === authStore.user.UID).length
+})
 
 // Methods
 const fetchPosts = async (page = 1, useCache = true) => {
@@ -126,7 +132,7 @@ onMounted(async () => {
     <div class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="text-center">
-          <h1 class="text-5xl font-bold text-gray-900 mb-6">Welcome to Our Forum</h1>
+          <h1 class="text-4xl lg:text-8xl font-bold bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 bg-clip-text text-transparent mb-6">The Forum</h1>
           <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             A place to share your thoughts, discover new ideas, and connect with our growing community. 
             Join conversations, ask questions, and be part of something bigger.
@@ -146,7 +152,7 @@ onMounted(async () => {
                 <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                Create Your First Post
+                {{ userPostCount > 0 ? 'Create a New Post' : 'Create Your First Post' }}
               </router-link>
             </div>
             

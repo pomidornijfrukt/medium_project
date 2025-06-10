@@ -53,23 +53,45 @@
             
             <div class="mt-12 text-center">
               <h2 class="text-2xl font-semibold text-gray-900 mb-4">Get Started</h2>
-              <p class="text-gray-700 mb-6">
-                Ready to join our community? Create an account and start sharing your thoughts today.
-              </p>
-              <div class="space-x-4">
-                <router-link 
-                  to="/register" 
-                  class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Join Now
-                </router-link>
-                <router-link 
-                  to="/login" 
-                  class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Sign In
-                </router-link>
-              </div>
+              
+              <!-- Show for logged-in users -->
+              <template v-if="authStore.isLoggedIn">
+                <p class="text-gray-700 mb-6">
+                  Ready to share your thoughts with the community? Create a new post and start the conversation.
+                </p>
+                <div class="space-x-4">
+                  <router-link 
+                    to="/create" 
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-md text-lg font-medium transition-colors duration-200 inline-flex items-center"
+                  >
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create New Post
+                  </router-link>
+                </div>
+              </template>
+              
+              <!-- Show for non-logged-in users -->
+              <template v-else>
+                <p class="text-gray-700 mb-6">
+                  Ready to join our community? Create an account and start sharing your thoughts today.
+                </p>
+                <div class="space-x-4">
+                  <router-link 
+                    to="/register" 
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md text-sm font-medium transition-colors duration-200"
+                  >
+                    Join Now
+                  </router-link>
+                  <router-link 
+                    to="/login" 
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-md text-sm font-medium transition-colors duration-200"
+                  >
+                    Sign In
+                  </router-link>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -77,3 +99,9 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { useAuthStore } from '@/stores/auth.js'
+
+const authStore = useAuthStore()
+</script>
