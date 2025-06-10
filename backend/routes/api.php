@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\PostController;
+use App\Http\Controllers\API\AdvancedPostController;
 use App\Http\Controllers\API\TagController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\AdminController;
@@ -31,6 +32,8 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Posts - Public
 Route::get('/posts', [PostController::class, 'index']);
+Route::get('/posts/advanced-search', [AdvancedPostController::class, 'advancedSearch']);
+Route::get('/posts/trending', [AdvancedPostController::class, 'getTrendingPosts']);
 Route::get('/posts/tag/{tag}', [PostController::class, 'getByTag']);
 Route::get('/posts/user/{user}', [PostController::class, 'getUserPosts']);
 Route::get('/posts/{post}', [PostController::class, 'show']);

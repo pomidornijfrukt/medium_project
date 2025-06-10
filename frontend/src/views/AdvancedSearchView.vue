@@ -260,21 +260,21 @@
           </div>
           <div class="summary-stat">
             <div class="text-3xl font-bold text-emerald-600" aria-label="Average replies">
-              {{ searchResults.aggregations.avg_replies.toFixed(1) }}
+              {{ (searchResults.aggregations.avg_replies || 0).toFixed(1) }}
             </div>
             <div class="text-sm text-gray-600">Avg. Replies</div>
           </div>
           <div class="summary-stat">
             <div class="text-3xl font-bold text-purple-600" aria-label="Average content length">
-              {{ Math.round(searchResults.aggregations.avg_content_length) }}
+              {{ Math.round(searchResults.aggregations.avg_content_length || 0) }}
             </div>
             <div class="text-sm text-gray-600">Avg. Length</div>
           </div>
           <div class="summary-stat">
-            <div class="text-3xl font-bold text-orange-600" aria-label="Average participants">
-              {{ searchResults.aggregations.avg_unique_repliers.toFixed(1) }}
+            <div class="text-3xl font-bold text-orange-600" aria-label="Role distribution">
+              {{ Object.keys(searchResults.aggregations.role_distribution || {}).length }}
             </div>
-            <div class="text-sm text-gray-600">Avg. Participants</div>
+            <div class="text-sm text-gray-600">Role Types</div>
           </div>
         </div>
       </section>
@@ -742,10 +742,11 @@
       <h3 class="text-xl font-semibold text-gray-600 mb-2">Ready to search</h3>
       <p class="text-gray-500">Use the filters above to find the perfect posts</p>
     </div>
+    </main>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAccessibility } from '@/composables/useAccessibility'
@@ -753,393 +754,347 @@ import AccessiblePagination from '@/components/AccessiblePagination.vue'
 import AccessibleInput from '@/components/AccessibleInput.vue'
 import AccessibleLoading from '@/components/AccessibleLoading.vue'
 
-export default {
-  name: 'AdvancedSearch',
-  components: {
-    AccessiblePagination,
-    AccessibleInput,
-    AccessibleLoading
-  },
-  setup() {
-    const router = useRouter()
-    const { announceToScreenReader, focusElement } = useAccessibility()
+const router = useRouter()
+const { announceToScreenReader, focusElement } = useAccessibility()
+
+// Reactive state
+const loading = ref(false)
+const loadingTrending = ref(false)
+const searchPerformed = ref(false)
+const error = ref(null)
+const searchResults = ref(null)
+const announcementText = ref('')
+
+// Accessibility refs
+const resultsTitle = ref(null)
+const postRefs = ref({})
+const currentResultIndex = ref(0)
+
+const searchFilters = reactive({
+  search: '',
+  tags: '',
+  exclude_tags: '',
+  author_role: '',
+  min_replies: 0,
+  sort_by: 'recent',
+  per_page: 20,
+  page: 1
+})
+
+// Computed properties
+const hasActiveFilters = computed(() => {
+  return searchFilters.search || 
+         searchFilters.tags || 
+         searchFilters.exclude_tags ||
+         searchFilters.author_role || 
+         searchFilters.min_replies > 0
+})
+
+// Methods
+const performSearch = async () => {
+  loading.value = true
+  error.value = null
+  searchPerformed.value = true
+  announcementText.value = 'Searching...'
+
+  try {
+    const queryParams = new URLSearchParams()
     
-    // Reactive state
-    const loading = ref(false)
-    const loadingTrending = ref(false)
-    const searchPerformed = ref(false)
-    const error = ref(null)
-    const searchResults = ref(null)
-    const announcementText = ref('')
-    
-    // Accessibility refs
-    const resultsTitle = ref(null)
-    const postRefs = ref({})
-    const currentResultIndex = ref(0)
-    
-    const searchFilters = reactive({
-      search: '',
-      tags: '',
-      exclude_tags: '',
-      author_role: '',
-      min_replies: 0,
-      sort_by: 'recent',
-      per_page: 20,
-      page: 1
+    // Add non-empty filters to query params
+    Object.keys(searchFilters).forEach(key => {
+      const value = searchFilters[key]
+      if (value !== '' && value !== null && value !== undefined && !(key === 'min_replies' && value === 0)) {
+        queryParams.append(key, value)
+      }
     })
 
-    // Computed properties
-    const hasActiveFilters = computed(() => {
-      return searchFilters.search || 
-             searchFilters.tags || 
-             searchFilters.exclude_tags ||
-             searchFilters.author_role || 
-             searchFilters.min_replies > 0
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6969/api'
+    const response = await fetch(`${API_BASE_URL}/posts/advanced-search?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
     })
 
-    // Methods
-    const performSearch = async () => {
-      loading.value = true
-      error.value = null
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.success) {
+      searchResults.value = data.data
+      const resultCount = data.data.pagination.total
+      announcementText.value = `Search completed. Found ${resultCount} ${resultCount === 1 ? 'post' : 'posts'}.`
+      
+      // Focus on results title after search completes
+      await nextTick()
+      if (resultsTitle.value) {
+        focusElement(resultsTitle.value)
+      }
+    } else {
+      throw new Error(data.message || 'Search failed')
+    }
+
+  } catch (err) {
+    console.error('Search error:', err)
+    error.value = err.message
+    searchResults.value = null
+    announcementText.value = `Search failed: ${err.message}`
+  } finally {
+    loading.value = false
+  }
+}
+
+const getTrendingPosts = async () => {
+  loadingTrending.value = true
+  error.value = null
+
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6969/api'
+    const response = await fetch(`${API_BASE_URL}/posts/trending?period=7d`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.success) {
+      // Convert trending posts to search results format
+      searchResults.value = {
+        posts: data.data.trending_posts.map(post => ({
+          ...post,
+          content_preview: `Trending post with ${post.trending_score} trending score`,
+          tag_list: post.tags,
+          engagement_score: post.trending_score,
+          content_length: 0,
+          last_activity: post.created_at
+        })),
+        aggregations: {
+          total_results: data.data.trending_posts.length,
+          avg_replies: data.data.trending_posts.reduce((sum, p) => sum + (p.reply_count || 0), 0) / data.data.trending_posts.length || 0,
+          avg_content_length: 0,
+          role_distribution: data.data.trending_posts.reduce((acc, p) => {
+            const role = p.author_role || 'member'
+            acc[role] = (acc[role] || 0) + 1
+            return acc
+          }, {})
+        },
+        pagination: {
+          current_page: 1,
+          per_page: data.data.trending_posts.length,
+          total: data.data.trending_posts.length,
+          last_page: 1
+        }
+      }
       searchPerformed.value = true
-      announcementText.value = 'Searching...'
+    } else {
+      throw new Error(data.message || 'Failed to fetch trending posts')
+    }
 
-      try {
-        const queryParams = new URLSearchParams()
-        
-        // Add non-empty filters to query params
-        Object.keys(searchFilters).forEach(key => {
-          const value = searchFilters[key]
-          if (value !== '' && value !== null && value !== undefined && !(key === 'min_replies' && value === 0)) {
-            queryParams.append(key, value)
-          }
-        })
+  } catch (err) {
+    console.error('Trending posts error:', err)
+    error.value = err.message
+  } finally {
+    loadingTrending.value = false
+  }
+}
 
-        const response = await fetch(`/api/posts/advanced-search?${queryParams.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        })
+const clearFilters = () => {
+  Object.assign(searchFilters, {
+    search: '',
+    tags: '',
+    exclude_tags: '',
+    author_role: '',
+    min_replies: 0,
+    sort_by: 'recent',
+    per_page: 20,
+    page: 1
+  })
+  searchResults.value = null
+  searchPerformed.value = false
+  error.value = null
+}
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
+const changePage = (newPage) => {
+  if (newPage >= 1 && newPage <= searchResults.value.pagination.last_page) {
+    searchFilters.page = newPage
+    performSearch()
+  }
+}
 
-        const data = await response.json()
-        
-        if (data.success) {
-          searchResults.value = data.data
-          const resultCount = data.data.pagination.total
-          announcementText.value = `Search completed. Found ${resultCount} ${resultCount === 1 ? 'post' : 'posts'}.`
-          
-          // Focus on results title after search completes
-          await nextTick()
-          if (resultsTitle.value) {
-            focusElement(resultsTitle.value)
-          }
-        } else {
-          throw new Error(data.message || 'Search failed')
-        }
+const filterByTag = (tagName) => {
+  searchFilters.tags = tagName
+  searchFilters.page = 1
+  performSearch()
+}
 
-      } catch (err) {
-        console.error('Search error:', err)
-        error.value = err.message
-        searchResults.value = null
-        announcementText.value = `Search failed: ${err.message}`
-      } finally {
-        loading.value = false
+const excludeTag = (tagName) => {
+  // Add to exclude_tags, handling existing exclusions
+  const currentExcludes = searchFilters.exclude_tags.split(',').filter(tag => tag.trim() !== '')
+  if (!currentExcludes.includes(tagName)) {
+    currentExcludes.push(tagName)
+    searchFilters.exclude_tags = currentExcludes.join(',')
+    searchFilters.page = 1
+    performSearch()
+    announceToScreenReader(`Excluded tag ${tagName} from search`)
+  }
+}
+
+const viewPost = (postId) => {
+  router.push(`/posts/${postId}`)
+}
+
+const retrySearch = () => {
+  performSearch()
+}
+
+// Accessibility methods
+const skipToMain = () => {
+  focusElement('#main-content')
+}
+
+const handleSortChange = async () => {
+  searchFilters.page = 1
+  await performSearch()
+  announceToScreenReader(`Results sorted by ${searchFilters.sort_by}`)
+  await nextTick()
+  focusElement(resultsTitle.value)
+}
+
+const handlePageChange = async (newPage) => {
+  searchFilters.page = newPage
+  await performSearch()
+  announceToScreenReader(`Moved to page ${newPage}`)
+  await nextTick()
+  focusElement(resultsTitle.value)
+}
+
+const focusFirstResult = () => {
+  const firstPost = postRefs.value[0]
+  if (firstPost) {
+    firstPost.focus()
+    currentResultIndex.value = 0
+    announceToScreenReader('Focused on first search result')
+  }
+}
+
+const handlePostFocus = (index) => {
+  currentResultIndex.value = index
+}
+
+const handlePostKeydown = (event, post, index) => {
+  switch (event.key) {
+    case 'Enter':
+    case ' ':
+      event.preventDefault()
+      viewPost(post.post_id)
+      break
+    case 'ArrowUp':
+      event.preventDefault()
+      navigateToPost(index - 1)
+      break
+    case 'ArrowDown':
+      event.preventDefault()
+      navigateToPost(index + 1)
+      break
+    case 'Home':
+      event.preventDefault()
+      navigateToPost(0)
+      break
+    case 'End':
+      event.preventDefault()
+      navigateToPost(searchResults.value.posts.length - 1)
+      break
+  }
+}
+
+const handleTagKeydown = (event, tag, tagIndex, totalTags) => {
+  switch (event.key) {
+    case 'ArrowRight':
+      event.preventDefault()
+      if (tagIndex < totalTags - 1) {
+        // Focus next tag button
+        const nextButton = event.target.parentElement.nextElementSibling?.querySelector('button')
+        if (nextButton) nextButton.focus()
       }
-    }
-
-    const getTrendingPosts = async () => {
-      loadingTrending.value = true
-      error.value = null
-
-      try {
-        const response = await fetch('/api/posts/trending?period=7d', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const data = await response.json()
-        
-        if (data.success) {
-          // Convert trending posts to search results format
-          searchResults.value = {
-            posts: data.data.trending_posts.map(post => ({
-              ...post,
-              content_preview: `Trending post with ${post.trending_score} trending score`,
-              tag_list: post.tags,
-              engagement_score: post.trending_score,
-              content_length: 0,
-              last_activity: post.created_at
-            })),
-            aggregations: {
-              total_results: data.data.trending_posts.length,
-              avg_replies: data.data.trending_posts.reduce((sum, p) => sum + p.reply_count, 0) / data.data.trending_posts.length,
-              avg_content_length: 0,
-              avg_unique_repliers: data.data.trending_posts.reduce((sum, p) => sum + p.unique_repliers, 0) / data.data.trending_posts.length
-            },
-            pagination: {
-              current_page: 1,
-              per_page: data.data.trending_posts.length,
-              total: data.data.trending_posts.length,
-              last_page: 1
-            }
-          }
-          searchPerformed.value = true
-        } else {
-          throw new Error(data.message || 'Failed to fetch trending posts')
-        }
-
-      } catch (err) {
-        console.error('Trending posts error:', err)
-        error.value = err.message
-      } finally {
-        loadingTrending.value = false
+      break
+    case 'ArrowLeft':
+      event.preventDefault()
+      if (tagIndex > 0) {
+        // Focus previous tag button
+        const prevButton = event.target.parentElement.previousElementSibling?.querySelector('button')
+        if (prevButton) prevButton.focus()
       }
-    }
+      break
+  }
+}
 
-    const clearFilters = () => {
-      Object.assign(searchFilters, {
-        search: '',
-        tags: '',
-        exclude_tags: '',
-        author_role: '',
-        min_replies: 0,
-        sort_by: 'recent',
-        per_page: 20,
-        page: 1
-      })
-      searchResults.value = null
-      searchPerformed.value = false
-      error.value = null
-    }
-
-    const changePage = (newPage) => {
-      if (newPage >= 1 && newPage <= searchResults.value.pagination.last_page) {
-        searchFilters.page = newPage
-        performSearch()
-      }
-    }
-
-    const filterByTag = (tagName) => {
-      searchFilters.tags = tagName
-      searchFilters.page = 1
-      performSearch()
-    }
-
-    const excludeTag = (tagName) => {
-      // Add to exclude_tags, handling existing exclusions
-      const currentExcludes = searchFilters.exclude_tags.split(',').filter(tag => tag.trim() !== '')
-      if (!currentExcludes.includes(tagName)) {
-        currentExcludes.push(tagName)
-        searchFilters.exclude_tags = currentExcludes.join(',')
-        searchFilters.page = 1
-        performSearch()
-        announceToScreenReader(`Excluded tag ${tagName} from search`)
-      }
-    }
-
-    const viewPost = (postId) => {
-      router.push(`/posts/${postId}`)
-    }
-
-    // Accessibility methods
-    const skipToMain = () => {
-      focusElement('#main-content')
-    }
-
-    const handleSortChange = async () => {
-      searchFilters.page = 1
-      await performSearch()
-      announceToScreenReader(`Results sorted by ${searchFilters.sort_by}`)
-      await nextTick()
-      focusElement(resultsTitle.value)
-    }
-
-    const handlePageChange = async (newPage) => {
-      searchFilters.page = newPage
-      await performSearch()
-      announceToScreenReader(`Moved to page ${newPage}`)
-      await nextTick()
-      focusElement(resultsTitle.value)
-    }
-
-    const focusFirstResult = () => {
-      const firstPost = postRefs.value[0]
-      if (firstPost) {
-        firstPost.focus()
-        currentResultIndex.value = 0
-        announceToScreenReader('Focused on first search result')
-      }
-    }
-
-    const handlePostFocus = (index) => {
+const navigateToPost = (index) => {
+  if (index >= 0 && index < searchResults.value.posts.length) {
+    const targetPost = postRefs.value[index]
+    if (targetPost) {
+      targetPost.focus()
       currentResultIndex.value = index
     }
+  }
+}
 
-    const handlePostKeydown = (event, post, index) => {
-      switch (event.key) {
-        case 'Enter':
-        case ' ':
-          event.preventDefault()
-          viewPost(post.post_id)
-          break
-        case 'ArrowUp':
-          event.preventDefault()
-          navigateToPost(index - 1)
-          break
-        case 'ArrowDown':
-          event.preventDefault()
-          navigateToPost(index + 1)
-          break
-        case 'Home':
-          event.preventDefault()
-          navigateToPost(0)
-          break
-        case 'End':
-          event.preventDefault()
-          navigateToPost(searchResults.value.posts.length - 1)
-          break
-      }
-    }
+const addToBookmarks = (postId) => {
+  // TODO: Implement bookmark functionality
+  announceToScreenReader('Post bookmarked')
+}
 
-    const handleTagKeydown = (event, tag, tagIndex, totalTags) => {
-      switch (event.key) {
-        case 'ArrowRight':
-          event.preventDefault()
-          if (tagIndex < totalTags - 1) {
-            // Focus next tag button
-            const nextButton = event.target.parentElement.nextElementSibling?.querySelector('button')
-            if (nextButton) nextButton.focus()
-          }
-          break
-        case 'ArrowLeft':
-          event.preventDefault()
-          if (tagIndex > 0) {
-            // Focus previous tag button
-            const prevButton = event.target.parentElement.previousElementSibling?.querySelector('button')
-            if (prevButton) prevButton.focus()
-          }
-          break
-      }
-    }
+const formatFullDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
-    const navigateToPost = (index) => {
-      if (index >= 0 && index < searchResults.value.posts.length) {
-        const targetPost = postRefs.value[index]
-        if (targetPost) {
-          targetPost.focus()
-          currentResultIndex.value = index
-        }
-      }
-    }
+// Utility methods
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
 
-    const addToBookmarks = (postId) => {
-      // TODO: Implement bookmark functionality
-      announceToScreenReader('Post bookmarked')
-    }
+const getPostBorderColor = (engagementScore) => {
+  if (engagementScore >= 20) return 'border-red-500'
+  if (engagementScore >= 15) return 'border-orange-500'
+  if (engagementScore >= 10) return 'border-yellow-500'
+  if (engagementScore >= 5) return 'border-green-500'
+  return 'border-blue-500'
+}
 
-    const formatFullDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
+const getEngagementScoreColor = (score) => {
+  if (score >= 20) return 'text-red-600'
+  if (score >= 15) return 'text-orange-600'
+  if (score >= 10) return 'text-yellow-600'
+  if (score >= 5) return 'text-green-600'
+  return 'text-blue-600'
+}
 
-    // Utility methods
-    const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
-    }
-
-    const getPostBorderColor = (engagementScore) => {
-      if (engagementScore >= 20) return 'border-red-500'
-      if (engagementScore >= 15) return 'border-orange-500'
-      if (engagementScore >= 10) return 'border-yellow-500'
-      if (engagementScore >= 5) return 'border-green-500'
-      return 'border-blue-500'
-    }
-
-    const getEngagementScoreColor = (score) => {
-      if (score >= 20) return 'text-red-600'
-      if (score >= 15) return 'text-orange-600'
-      if (score >= 10) return 'text-yellow-600'
-      if (score >= 5) return 'text-green-600'
-      return 'text-blue-600'
-    }
-
-    const getRoleBadgeClass = (role) => {
-      switch (role) {
-        case 'admin': return 'bg-red-100 text-red-800'
-        case 'moderator': return 'bg-purple-100 text-purple-800'
-        case 'member': return 'bg-blue-100 text-blue-800'
-        default: return 'bg-gray-100 text-gray-800'
-      }
-    }
-
-    return {
-      // State
-      loading,
-      loadingTrending,
-      searchPerformed,
-      error,
-      searchResults,
-      searchFilters,
-      announcementText,
-      
-      // Accessibility refs
-      resultsTitle,
-      postRefs,
-      currentResultIndex,
-      
-      // Computed
-      hasActiveFilters,
-      
-      // Methods
-      performSearch,
-      getTrendingPosts,
-      clearFilters,
-      changePage,
-      filterByTag,
-      excludeTag,
-      viewPost,
-      
-      // Accessibility methods
-      skipToMain,
-      handleSortChange,
-      handlePageChange,
-      focusFirstResult,
-      handlePostFocus,
-      handlePostKeydown,
-      handleTagKeydown,
-      navigateToPost,
-      addToBookmarks,
-      
-      // Utility methods
-      formatDate,
-      formatFullDate,
-      getPostBorderColor,
-      getEngagementScoreColor,
-      getRoleBadgeClass
-    }
+const getRoleBadgeClass = (role) => {
+  switch (role) {
+    case 'admin': return 'bg-red-100 text-red-800'
+    case 'moderator': return 'bg-purple-100 text-purple-800'
+    case 'member': return 'bg-blue-100 text-blue-800'
+    default: return 'bg-gray-100 text-gray-800'
   }
 }
 </script>
@@ -1148,6 +1103,7 @@ export default {
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

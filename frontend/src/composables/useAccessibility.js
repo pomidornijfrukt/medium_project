@@ -2,6 +2,15 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
 /**
+ * Generate unique ID for accessibility purposes
+ * @param {string} prefix - Optional prefix for the ID
+ * @returns {string} - Unique ID
+ */
+const generateId = (prefix = 'accessibility') => {
+  return `${prefix}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+/**
  * WCAG 2.1 AA Accessibility Composable
  * Provides comprehensive utilities for keyboard navigation, screen reader support,
  * focus management, color contrast compliance, and user preferences
@@ -546,6 +555,34 @@ export function useAccessibility() {
     }
   })
 
+  // Helper Functions
+  /**
+   * Alias for announce function for backward compatibility
+   * @param {string} message - Message to announce to screen readers
+   * @param {string} priority - 'polite' or 'assertive'
+   */
+  const announceToScreenReader = (message, priority = 'polite') => {
+    announceEnhanced(message, priority)
+  }
+
+  /**
+   * Focus an element by selector or element reference
+   * @param {string|HTMLElement} element - CSS selector or DOM element
+   */
+  const focusElement = (element) => {
+    nextTick(() => {
+      let target = element
+      
+      if (typeof element === 'string') {
+        target = document.querySelector(element)
+      }
+      
+      if (target && typeof target.focus === 'function') {
+        target.focus()
+      }
+    })
+  }
+
   return {
     // State
     isHighContrast,
@@ -561,6 +598,10 @@ export function useAccessibility() {
     checkContrast,
     formAccessibility,
     validateHeadingStructure,
+    
+    // Helper Functions
+    announceToScreenReader,
+    focusElement,
     
     // Original methods (preserved for compatibility)
     generateId,

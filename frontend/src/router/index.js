@@ -50,6 +50,11 @@ const router = createRouter({
       props: true
     },
     {
+      path: '/search',
+      name: 'advanced-search',
+      component: () => import('../views/AdvancedSearchView.vue')
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),

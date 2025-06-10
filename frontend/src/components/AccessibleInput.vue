@@ -14,7 +14,7 @@
       <input
         :id="inputId"
         ref="inputElement"
-        v-model="modelValue"
+        :value="modelValue"
         :type="type"
         :required="required"
         :disabled="disabled"
