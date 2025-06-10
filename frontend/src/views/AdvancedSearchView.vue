@@ -160,6 +160,7 @@
               <select
                 id="sort-by"
                 v-model="searchFilters.sort_by"
+                @change="handleSortChange"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 aria-describedby="sort-by-help"
               >
@@ -184,6 +185,7 @@
               <select
                 id="results-per-page"
                 v-model.number="searchFilters.per_page"
+                @change="handlePerPageChange"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 aria-describedby="per-page-help"
               >
@@ -227,6 +229,20 @@
 
             <button
               type="button"
+              @click="clearCacheOnly"
+              v-if="hasCachedData"
+              class="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 flex items-center transition-colors"
+              aria-label="Clear cached search results"
+              title="Clear cached search results"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Clear Cache
+            </button>
+
+            <button
+              type="button"
               @click="getTrendingPosts"
               :disabled="loadingTrending"
               class="px-6 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 flex items-center transition-colors"
@@ -250,7 +266,19 @@
         aria-labelledby="results-summary-title"
         role="region"
       >
-        <h2 id="results-summary-title" class="text-lg font-semibold text-gray-800 mb-4">Search Results Summary</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="results-summary-title" class="text-lg font-semibold text-gray-800">Search Results Summary</h2>
+          <div 
+            v-if="isCachedResults" 
+            class="flex items-center text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full"
+            title="These results were loaded from cache"
+          >
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            Cached Results
+          </div>
+        </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div class="summary-stat">
             <div class="text-3xl font-bold text-indigo-600" aria-label="Total results">
@@ -757,6 +785,15 @@ import AccessibleLoading from '@/components/AccessibleLoading.vue'
 const router = useRouter()
 const { announceToScreenReader, focusElement } = useAccessibility()
 
+// Cache management constants
+const CACHE_KEYS = {
+  SEARCH_RESULTS: 'advanced_search_results',
+  SEARCH_FILTERS: 'advanced_search_filters',
+  SEARCH_STATE: 'advanced_search_state',
+  TIMESTAMP: 'advanced_search_timestamp'
+}
+const CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
+
 // Reactive state
 const loading = ref(false)
 const loadingTrending = ref(false)
@@ -764,6 +801,7 @@ const searchPerformed = ref(false)
 const error = ref(null)
 const searchResults = ref(null)
 const announcementText = ref('')
+const loadedFromCache = ref(false)
 
 // Accessibility refs
 const resultsTitle = ref(null)
@@ -790,11 +828,117 @@ const hasActiveFilters = computed(() => {
          searchFilters.min_replies > 0
 })
 
+const isCachedResults = computed(() => {
+  return loadedFromCache.value && searchResults.value && searchPerformed.value
+})
+
+const hasCachedData = computed(() => {
+  const cached = localStorage.getItem(CACHE_KEYS.SEARCH_RESULTS)
+  if (!cached) return false
+  
+  try {
+    const cacheData = JSON.parse(cached)
+    const age = Date.now() - cacheData.timestamp
+    return age <= CACHE_EXPIRY
+  } catch {
+    return false
+  }
+})
+
+// Cache management functions
+const saveToCache = (results, filters, state) => {
+  try {
+    const cacheData = {
+      results,
+      filters: { ...filters },
+      state,
+      timestamp: Date.now(),
+      // Store the original unsorted posts for client-side sorting
+      originalPosts: results.posts ? [...results.posts] : []
+    }
+    localStorage.setItem(CACHE_KEYS.SEARCH_RESULTS, JSON.stringify(cacheData))
+    console.log('✅ Advanced search results cached with original posts')
+  } catch (error) {
+    console.warn('⚠️ Failed to cache search results:', error)
+  }
+}
+
+const loadFromCache = () => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEYS.SEARCH_RESULTS)
+    if (!cached) return null
+
+    const cacheData = JSON.parse(cached)
+    const age = Date.now() - cacheData.timestamp
+
+    // Check if cache is expired
+    if (age > CACHE_EXPIRY) {
+      localStorage.removeItem(CACHE_KEYS.SEARCH_RESULTS)
+      console.log('🗑️ Advanced search cache expired, cleared')
+      return null
+    }
+
+    console.log('📦 Loading advanced search results from cache')
+    return cacheData
+  } catch (error) {
+    console.warn('⚠️ Failed to load cache:', error)
+    localStorage.removeItem(CACHE_KEYS.SEARCH_RESULTS)
+    return null
+  }
+}
+
+const clearCache = () => {
+  localStorage.removeItem(CACHE_KEYS.SEARCH_RESULTS)
+  console.log('🗑️ Advanced search cache cleared')
+}
+
+// Client-side sorting function
+const sortPostsLocally = (posts, sortBy) => {
+  const sortedPosts = [...posts]
+  
+  switch (sortBy) {
+    case 'recent':
+      return sortedPosts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    
+    case 'popular':
+      return sortedPosts.sort((a, b) => (b.engagement_score || 0) - (a.engagement_score || 0))
+    
+    case 'replies':
+      return sortedPosts.sort((a, b) => (b.reply_count || 0) - (a.reply_count || 0))
+    
+    case 'engagement':
+      return sortedPosts.sort((a, b) => {
+        const aScore = (a.engagement_score || 0) + (a.reply_count || 0) * 0.5 + (a.unique_repliers || 0) * 0.3
+        const bScore = (b.engagement_score || 0) + (b.reply_count || 0) * 0.5 + (b.unique_repliers || 0) * 0.3
+        return bScore - aScore
+      })
+    
+    default:
+      return sortedPosts
+  }
+}
+
+// Check if we can sort locally (have cached original posts and no filter changes)
+const canSortLocally = (newSortBy) => {
+  const cached = loadFromCache()
+  if (!cached || !cached.originalPosts || !searchResults.value) return false
+  
+  // Check if current filters match cached filters (excluding sort_by)
+  const currentFiltersWithoutSort = { ...searchFilters }
+  delete currentFiltersWithoutSort.sort_by
+  
+  const cachedFiltersWithoutSort = { ...cached.filters }
+  delete cachedFiltersWithoutSort.sort_by
+  
+  return JSON.stringify(currentFiltersWithoutSort) === JSON.stringify(cachedFiltersWithoutSort)
+}
+
 // Methods
 const performSearch = async () => {
   loading.value = true
   error.value = null
   searchPerformed.value = true
+  loadedFromCache.value = false // Reset cache flag for new searches
   announcementText.value = 'Searching...'
 
   try {
@@ -827,6 +971,12 @@ const performSearch = async () => {
       searchResults.value = data.data
       const resultCount = data.data.pagination.total
       announcementText.value = `Search completed. Found ${resultCount} ${resultCount === 1 ? 'post' : 'posts'}.`
+      
+      // Save to cache
+      saveToCache(data.data, searchFilters, {
+        searchPerformed: true,
+        announcementText: announcementText.value
+      })
       
       // Focus on results title after search completes
       await nextTick()
@@ -922,6 +1072,14 @@ const clearFilters = () => {
   searchResults.value = null
   searchPerformed.value = false
   error.value = null
+  clearCache()
+  announceToScreenReader('Search filters cleared and cache reset')
+}
+
+const clearCacheOnly = () => {
+  clearCache()
+  loadedFromCache.value = false
+  announceToScreenReader('Search cache cleared. Your current search results are still visible.')
 }
 
 const changePage = (newPage) => {
@@ -963,9 +1121,41 @@ const skipToMain = () => {
 }
 
 const handleSortChange = async () => {
+  const newSortBy = searchFilters.sort_by
+  
+  // Try client-side sorting first if we have cached data
+  if (canSortLocally(newSortBy)) {
+    const cached = loadFromCache()
+    if (cached && cached.originalPosts) {
+      console.log('🔄 Sorting results locally without API call')
+      
+      // Sort the original posts with the new sort criteria
+      const sortedPosts = sortPostsLocally(cached.originalPosts, newSortBy)
+      
+      // Update the search results with sorted posts
+      searchResults.value = {
+        ...searchResults.value,
+        posts: sortedPosts
+      }
+      
+      // Update cache with new sort order
+      saveToCache(searchResults.value, searchFilters, {
+        searchPerformed: true,
+        announcementText: announcementText.value
+      })
+      
+      announceToScreenReader(`Results sorted by ${newSortBy} using cached data`)
+      await nextTick()
+      focusElement(resultsTitle.value)
+      return
+    }
+  }
+  
+  // Fall back to API call if local sorting isn't possible
+  console.log('🌐 Sorting requires new API call')
   searchFilters.page = 1
   await performSearch()
-  announceToScreenReader(`Results sorted by ${searchFilters.sort_by}`)
+  announceToScreenReader(`Results sorted by ${newSortBy} with fresh data`)
   await nextTick()
   focusElement(resultsTitle.value)
 }
@@ -974,6 +1164,15 @@ const handlePageChange = async (newPage) => {
   searchFilters.page = newPage
   await performSearch()
   announceToScreenReader(`Moved to page ${newPage}`)
+  await nextTick()
+  focusElement(resultsTitle.value)
+}
+
+const handlePerPageChange = async () => {
+  // Reset to first page when changing results per page
+  searchFilters.page = 1
+  await performSearch()
+  announceToScreenReader(`Results per page changed to ${searchFilters.per_page}`)
   await nextTick()
   focusElement(resultsTitle.value)
 }
@@ -1097,6 +1296,30 @@ const getRoleBadgeClass = (role) => {
     default: return 'bg-gray-100 text-gray-800'
   }
 }
+
+// Component lifecycle - Load cached data on mount
+onMounted(() => {
+  const cached = loadFromCache()
+  if (cached) {
+    // Restore search results
+    searchResults.value = cached.results
+    
+    // Restore search filters
+    Object.assign(searchFilters, cached.filters)
+    
+    // Restore component state
+    searchPerformed.value = cached.state.searchPerformed
+    announcementText.value = cached.state.announcementText
+    loadedFromCache.value = true // Mark as loaded from cache
+    
+    console.log('🎯 Advanced search state restored from cache')
+    
+    // Announce restoration to screen readers
+    setTimeout(() => {
+      announceToScreenReader('Previous search results restored')
+    }, 1000)
+  }
+})
 </script>
 
 <style scoped>
